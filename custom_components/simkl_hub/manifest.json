@@ -1,0 +1,20 @@
+{
+  "domain": "simkl_hub",
+  "name": "SIMKL Hub",
+  "codeowners": [
+    "@tandarra"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http",
+    "panel_custom",
+    "websocket_api"
+  ],
+  "documentation": "https://github.com/tandarra/SIMKL-HomeAssistant",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/tandarra/SIMKL-HomeAssistant/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

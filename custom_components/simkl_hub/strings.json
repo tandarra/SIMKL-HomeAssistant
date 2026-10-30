@@ -1,0 +1,51 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect SIMKL",
+        "description": "Create a free app at https://simkl.com/settings/developer/ (choose the PIN / device sign-in type), then paste its Client ID here. You approve a code on simkl.com in the next step; no password is entered in Home Assistant.",
+        "data": { "client_id": "Client ID" }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect SIMKL",
+        "description": "SIMKL rejected the saved sign-in. Continue to get a new approval code."
+      }
+    },
+    "progress": {
+      "approve": "Open {url} and enter the code **{code}** while signed in to the SIMKL account you want to use. This page continues automatically once you approve."
+    },
+    "error": { "cannot_start": "SIMKL did not accept that Client ID. Check it and try again." },
+    "abort": {
+      "already_configured": "This SIMKL account is already set up.",
+      "denied": "Sign-in was declined on simkl.com.",
+      "expired": "The code expired. Start again.",
+      "reauth_successful": "SIMKL reconnected."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SIMKL Hub options",
+        "data": {
+          "popular_tv": "Popular TV/anime titles to show per month (besides your own list)",
+          "popular_movies": "Popular movie releases to show per month (besides your own list)",
+          "scan_minutes": "Sync interval (minutes)"
+        }
+      }
+    }
+  },
+  "services": {
+    "open_in_stremio": {
+      "name": "Open in Stremio",
+      "description": "Open a series, episode or movie in Stremio on an Android/Google TV device, an ADB-connected device or a phone.",
+      "fields": {
+        "target": { "name": "Target", "description": "A remote, media_player or notify.mobile_app_* entity/service." },
+        "imdb": { "name": "IMDb ID", "description": "e.g. tt0944947." },
+        "kind": { "name": "Kind", "description": "show, anime or movie." },
+        "season": { "name": "Season", "description": "Optional season number." },
+        "episode": { "name": "Episode", "description": "Optional episode number." },
+        "title": { "name": "Title", "description": "Used for a search link when there is no IMDb ID." }
+      }
+    }
+  }
+}

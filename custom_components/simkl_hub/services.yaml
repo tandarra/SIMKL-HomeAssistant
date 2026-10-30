@@ -1,0 +1,32 @@
+open_in_stremio:
+  fields:
+    target:
+      required: true
+      example: remote.living_room_tv
+      selector:
+        text:
+    imdb:
+      example: tt0944947
+      selector:
+        text:
+    kind:
+      required: true
+      default: show
+      selector:
+        select:
+          options: [show, anime, movie]
+    season:
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    episode:
+      selector:
+        number:
+          min: 0
+          max: 5000
+          mode: box
+    title:
+      selector:
+        text:
