@@ -340,7 +340,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
     _dayRow(x) {
       const tags = (x.mine ? '<span class="tag mine">' + (x.st === 'watching' ? 'watching' : 'my list') + '</span>' : '') + (this._status(x.k, x.id) === 'done' ? '<span class="tag fin">watched</span>' : '') + (x.fin ? '<span class="tag fin">' + esc(String(x.fin).replace(/_/g, ' ')) + '</span>' : '');
       const sub = x.k === 'movie' ? 'Movie release' : [epLabel(x), x.et].filter(Boolean).map(esc).join(' · ');
-      return '<div class="row" data-ci="' + esc(x.k + '|' + x.id + '|' + (x.s == null ? '' : x.s) + '|' + (x.e == null ? '' : x.e)) + '"><img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="x"><div class="t">' + esc(x.title) + tags + '</div><div class="m">' + sub + '</div><div class="m">' + (x.k === 'movie' ? 'Release day' : fmtTime(x.date)) + (x.rating ? ' · ★ ' + x.rating : '') + '</div></div></div>';
+      return '<div class="row" data-ci="' + esc(x.k + '|' + x.id + '|' + (x.s == null ? '' : x.s) + '|' + (x.e == null ? '' : x.e)) + '"><img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="x"><div class="t">' + esc(x.title) + tags + '</div><div class="m">' + sub + '</div><div class="m">' + (x.k === 'movie' ? 'Release day' : fmtTime(x.date)) + (x.rating ? ' · ★ ' + x.rating : '') + '</div></div><button class="sm" data-hide="' + esc(x.k + '|' + x.id) + '" title="Hide this title from the calendar" style="align-self:center">Hide</button></div>';
     }
     _calendarView() {
       if (!this._prefs && !this._prefsBusy) { this._prefsBusy = true; this._hass.callWS({ type: 'simkl_hub/prefs' }).then((p) => { this._prefs = p; this._prefsBusy = false; this._render(); }).catch(() => { this._prefs = { kinds: { show: true, anime: true, movie: true }, hidden: [] }; this._prefsBusy = false; }); }
@@ -353,7 +353,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
         else label = 'Next 30 days';
         return '<div class="ctl"><button class="sm" data-nav="-1">‹</button><button class="sm" data-nav="0">Today</button><button class="sm" data-nav="1">›</button><h3>' + label + '</h3><span class="sp"></span>' +
           '<div class="seg">' + [['month', 'Month'], ['week', 'Week'], ['agenda', 'Agenda']].map(([k, l]) => '<button data-v="' + k + '" class="' + (this._view === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
-          '<div class="seg">' + [['mine', 'My list'], ['major', 'My list + major'], ['all', 'Everything']].map(([k, l]) => '<button data-sc="' + k + '" class="' + (this._scope === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div><button class="cog ' + (this._cog ? 'on' : '') + '" data-cog="1" title="Calendar settings">⚙</button></div>' + (this._cog ? this._cogPanel() : '');
+          '<div class="seg">' + [['mine', 'My list'], ['major', 'My list + major'], ['all', 'Everything']].map(([k, l]) => '<button data-sc="' + k + '" class="' + (this._scope === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div><div class="seg">' + [['show', 'Series'], ['movie', 'Movies'], ['anime', 'Anime']].map(([k, l]) => '<button data-kf="' + k + '" class="' + (((this._prefs && this._prefs.kinds) || {})[k] !== false ? 'on' : '') + '">' + l + '</button>').join('') + '</div><button class="cog ' + (this._cog ? 'on' : '') + '" data-cog="1" title="Calendar settings">⚙</button></div>' + (this._cog ? this._cogPanel() : '');
       };
       const dayPanel = () => { const a = map[this._day] || []; const d = new Date(this._day + 'T12:00:00'); return '<div class="panel"><h4>' + d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + '</h4>' + (a.length ? a.map((x) => this._dayRow(x)).join('') : '<div class="empty">Nothing scheduled.</div>') + '</div>'; };
       if (this._view === 'month') {
@@ -386,7 +386,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       const shown = items.filter((x) => !hid.has(x.kind + '|' + x.id)).length;
       return '<div class="cs"><h4>Show on the calendar</h4><div class="row2">' + kinds + '</div>' +
         '<h4>Titles I follow <span class="m">(' + shown + ' of ' + items.length + ' shown; untick to remove one from the calendar)</span></h4>' +
-        '<div class="row2"><input type="search" data-cq placeholder="Filter titles…"><button class="sm" data-cb="all">Tick all</button><button class="sm" data-cb="none">Untick all</button><button class="sm" data-cb="recent">Only watched in the last 90 days</button><button class="sm pri" data-cog="1">Done</button></div>' +
+        '<div class="row2"><input type="search" data-cq placeholder="Filter titles…"><button class="sm" data-cb="all">Tick all</button><button class="sm" data-cb="none">Untick all</button><button class="sm" data-cb="recent">Only watched in the last 90 days</button><button class="sm" data-cb="reset">Reset hidden</button><button class="sm pri" data-cog="1">Done</button></div>' +
         '<div class="lst">' + (rows || '<div class="m">Nothing in Watching or Plan to watch yet.</div>') + '</div></div>';
     }
     async _savePrefs() {
@@ -426,7 +426,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       this._wire(root);
     }
     _wire(root) {
-      const on = (sel, fn) => root.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => fn(b)));
+      const on = (sel, fn) => root.querySelectorAll(sel).forEach((b) => b.addEventListener('click', (ev) => fn(b, ev)));
       const all = () => [...((this._st && this._st.watching) || []), ...((this._st && this._st.plan) || [])];
       on('[data-t]', (b) => { this._tab = b.dataset.t; this._focusSearch = this._tab === 'search'; this._render(); });
       on('[data-k]', (b) => { const it = all().find((x) => x.kind + '|' + x.id === b.dataset.k) || this._pool[b.dataset.k]; if (it) this._open(it); });
@@ -438,11 +438,15 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
         try { await this._hass.callWS({ type: 'simkl_hub/mark', kind, simkl_id: id }); this._st = { ...this._st, done: [...((this._st && this._st.done) || []), kind + '|' + id] }; this._done = null; this._render(); this._loadState(); }
         catch (err) { b.textContent = '✓'; this._flash((err && (err.message || err.code)) || 'Could not mark as watched'); }
       }));
+      on('[data-kf]', (b) => { if (!this._prefs) return; const k = b.dataset.kf; this._prefs.kinds[k] = this._prefs.kinds[k] === false; this._savePrefs(); });
+      on('[data-hide]', (b, ev) => { ev.stopPropagation(); if (!this._prefs) return; const h = new Set(this._prefs.hidden); h.add(b.dataset.hide); this._prefs.hidden = [...h]; this._flash('Hidden — undo any time in ⚙ → Reset hidden'); this._savePrefs(); });
+      on('[data-cb="reset"]', () => { this._prefs.hidden = []; this._savePrefs(); });
       on('[data-cog]', () => { this._cog = !this._cog; this._render(); });
       root.querySelectorAll('[data-pk]').forEach((b) => b.addEventListener('change', () => { this._prefs.kinds[b.dataset.pk] = b.checked; this._savePrefs(); }));
       root.querySelectorAll('[data-hk]').forEach((b) => b.addEventListener('change', () => { const h = new Set(this._prefs.hidden); if (b.checked) h.delete(b.dataset.hk); else h.add(b.dataset.hk); this._prefs.hidden = [...h]; clearTimeout(this._pt); this._pt = setTimeout(() => this._savePrefs(), 600); const hd = root.querySelector('.cs h4 .m'); if (hd) hd.textContent = '(' + root.querySelectorAll('[data-hk]:checked').length + ' of ' + root.querySelectorAll('[data-hk]').length + ' shown; untick to remove one from the calendar)'; }));
       root.querySelectorAll('[data-cq]').forEach((i) => i.addEventListener('input', () => { const q = i.value.trim().toLowerCase(); root.querySelectorAll('.cs .lst label').forEach((l) => { l.style.display = !q || (l.dataset.t || '').includes(q) ? '' : 'none'; }); }));
       on('[data-cb]', (b) => {
+        if (b.dataset.cb === 'reset') return;
         const q = (root.querySelector('[data-cq]') || { value: '' }).value.trim().toLowerCase(), items = [...((this._st && this._st.watching) || []), ...((this._st && this._st.plan) || [])], h = new Set(this._prefs.hidden), cutoff = Date.now() - 90 * 864e5;
         items.forEach((x) => { if (q && !String(x.title).toLowerCase().includes(q)) return; const k = x.kind + '|' + x.id; const recent = x.status === 'plantowatch' || (x.last && new Date(x.last).getTime() >= cutoff); if (b.dataset.cb === 'all' || (b.dataset.cb === 'recent' && recent)) h.delete(k); else h.add(k); });
         this._prefs.hidden = [...h]; this._savePrefs();
@@ -459,7 +463,8 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       on('[data-sc]', (b) => { this._scope = b.dataset.sc; this._render(); });
       on('[data-nav]', (b) => { this._nav(Number(b.dataset.nav)); this._render(); });
       on('[data-d]', (b) => { this._day = b.dataset.d; this._render(); });
-      on('[data-ci]', (b) => {
+      on('[data-ci]', (b, ev) => {
+        if (ev && ev.target.closest && ev.target.closest('[data-hide]')) return;
         const [k, id, s, e] = b.dataset.ci.split('|'); const hit = Object.values(this._cal).flat().find((x) => x.k === k && String(x.id) === id);
         this._open({ kind: k, id: id, title: hit && hit.title, poster: hit && hit.poster }, s === '' ? null : Number(s), e === '' ? null : Number(e));
       });
