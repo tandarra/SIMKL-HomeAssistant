@@ -73,36 +73,36 @@ async def async_open(hass: HomeAssistant, target: str, link: str, title: str = "
         raise HomeAssistantError(f"Unsupported target {target}")
 
 
-def configured_players(hass: HomeAssistant, players: list[str], notify: list[str]) -> list[dict[str, str]]:
-    """Devices the user picked in the options flow."""
-    reg = er.async_get(hass)
+def friendly_name(hass: HomeAssistant, entity_id: str) -> str:
+    """Best default label for a chosen device."""
+    state = hass.states.get(entity_id)
+    if state is not None and state.name:
+        return state.name
+    ent = er.async_get(hass).async_get(entity_id)
+    return (ent and (ent.name or ent.original_name)) or entity_id
+
+
+def normalise_players(raw: list | None) -> list[dict[str, str]]:
+    """Accept both the old list-of-ids and the new list-of-{id,name} formats."""
     out: list[dict[str, str]] = []
-    for eid in players:
-        state = hass.states.get(eid)
-        ent = reg.async_get(eid)
-        name = (state.name if state else None) or (ent and (ent.name or ent.original_name)) or eid
-        out.append({"id": eid, "name": name, "type": "chosen"})
-    for svc in notify:
-        label = svc.split("mobile_app_", 1)[-1].replace("_", " ").title()
-        out.append({"id": svc, "name": f"{label} (phone)", "type": "phone"})
+    for item in raw or []:
+        if isinstance(item, str):
+            out.append({"id": item, "name": ""})
+        elif isinstance(item, dict) and item.get("id"):
+            out.append({"id": item["id"], "name": item.get("name") or ""})
     return out
 
 
-def discover_players(hass: HomeAssistant) -> list[dict[str, str]]:
-    """Android/Google TV style devices plus companion-app notify services."""
-    reg = er.async_get(hass)
+def configured_players(hass: HomeAssistant, players: list, notify: list) -> list[dict[str, str]]:
+    """Only the devices the user chose, with the names they gave them."""
     out: list[dict[str, str]] = []
-    have_remote_for_device: set[str | None] = set()
-    for ent in reg.entities.values():
-        if ent.disabled or ent.domain != "remote" or ent.platform != "androidtv_remote":
-            continue
-        have_remote_for_device.add(ent.device_id)
-        out.append({"id": ent.entity_id, "name": ent.name or ent.original_name or ent.entity_id, "type": "android_tv"})
-    for ent in reg.entities.values():
-        if ent.disabled or ent.domain != "media_player" or ent.platform != "androidtv":
-            continue
-        out.append({"id": ent.entity_id, "name": ent.name or ent.original_name or ent.entity_id, "type": "adb"})
-    for svc in hass.services.async_services_for_domain("notify"):
-        if svc.startswith("mobile_app_"):
-            out.append({"id": f"notify.{svc}", "name": svc[len("mobile_app_"):].replace("_", " ").title() + " (phone)", "type": "phone"})
+    for item in normalise_players(players) + normalise_players(notify):
+        eid = item["id"]
+        is_phone = eid.startswith("notify.")
+        name = item["name"] or (
+            eid.split("mobile_app_", 1)[-1].replace("_", " ").title() + " (phone)"
+            if is_phone
+            else friendly_name(hass, eid)
+        )
+        out.append({"id": eid, "name": name, "type": "phone" if is_phone else "chosen"})
     return out

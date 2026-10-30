@@ -12,11 +12,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import SimklAuthError, SimklClient, SimklError
+from .api import SimklAuthError, SimklClient, SimklError, SimklPermission
 from .const import (
     CALENDAR_TTL,
     CONF_ACCESS_TOKEN,
     CONF_EXPIRES_AT,
+    CONF_OMDB_KEY,
     CONF_POPULAR_MOVIES,
     CONF_POPULAR_TV,
     CONF_REFRESH_TOKEN,
@@ -26,11 +27,30 @@ from .const import (
     DEFAULT_SCAN_MINUTES,
     DETAIL_TTL,
     DOMAIN,
+    TREND_TTL,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 SINGULAR = {"shows": "show", "anime": "anime", "movies": "movie"}
+
+
+def _kind_of(raw: str | None) -> str:
+    raw = (raw or "").lower()
+    if raw.startswith("movie"):
+        return "movie"
+    if raw.startswith("anime"):
+        return "anime"
+    return "show"
+
+
+def _rate(ratings: Any, which: str) -> float | None:
+    if isinstance(ratings, dict):
+        block = ratings.get(which)
+        if isinstance(block, dict):
+            val = block.get("rating")
+            return float(val) if isinstance(val, (int, float)) and val else None
+    return None
 
 
 def _tidy(item: dict[str, Any], kind: str, status: str) -> dict[str, Any]:
@@ -98,6 +118,7 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             watching: list[dict[str, Any]] = []
             plan: list[dict[str, Any]] = []
             completed: dict[str, int] = {}
+            done_items: list[dict[str, Any]] = []
             for kind in ("shows", "anime", "movies"):
                 single = SINGULAR[kind]
                 if kind != "movies":
@@ -107,9 +128,10 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         watching.append(_tidy(it, single, "watching"))
                 for it in await self.client.all_items(kind, "plantowatch"):
                     plan.append(_tidy(it, single, "plantowatch"))
-                completed[kind] = len(
-                    await self.client.all_items(kind, "completed", {"extended": "simkl_ids_only"})
-                )
+                finished = await self.client.all_items(kind, "completed")
+                completed[kind] = len(finished)
+                for it in finished:
+                    done_items.append(_tidy(it, single, "completed"))
         except SimklAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except SimklError as err:
@@ -118,10 +140,12 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._activity_stamp = stamp
         watching.sort(key=lambda x: x.get("last") or "", reverse=True)
         plan.sort(key=lambda x: x.get("added") or "", reverse=True)
+        done_items.sort(key=lambda x: x.get("last") or x.get("added") or "", reverse=True)
         return {
             "watching": watching,
             "plan": plan,
             "completed": completed,
+            "done_items": done_items,
             "updated": time.time(),
         }
 
@@ -135,8 +159,9 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if await self.client.ensure_token():
                 await self._persist_tokens()
             info, eps = await self.client.detail(kind, str(sid))
-        except SimklAuthError as err:
-            raise ConfigEntryAuthFailed(str(err)) from err
+        except SimklAuthError:
+            self.config_entry.async_start_reauth(self.hass)
+            raise
         ids = info.get("ids") or {}
         rating = ((info.get("ratings") or {}).get("simkl") or {}).get("rating")
         out = {
@@ -151,6 +176,14 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "status": info.get("status"),
             "network": info.get("network"),
             "rating": rating,
+            "imdb_rating": _rate(info.get("ratings"), "imdb"),
+            "imdb_votes": ((info.get("ratings") or {}).get("imdb") or {}).get("votes"),
+            "certification": info.get("certification"),
+            "country": info.get("country"),
+            "first_aired": info.get("first_aired") or info.get("released"),
+            "total_episodes": info.get("total_episodes"),
+            "trailers": [t.get("youtube") for t in (info.get("trailers") or []) if isinstance(t, dict) and t.get("youtube")][:3],
+            "list": self._list_status(kind, sid),
             "imdb": ids.get("imdb"),
             "tmdb": ids.get("tmdb"),
             "eps": [
@@ -165,8 +198,112 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if e.get("type") in (None, "episode")
             ],
         }
+        key_omdb = self.config_entry.options.get(CONF_OMDB_KEY)
+        if key_omdb and out["imdb"]:
+            try:
+                extra = await self.client.omdb(key_omdb, out["imdb"])
+            except SimklError:
+                extra = {}
+            for r in extra.get("Ratings") or []:
+                if r.get("Source") == "Rotten Tomatoes":
+                    out["rotten"] = r.get("Value")
+            if extra.get("Metascore") not in (None, "N/A"):
+                out["metascore"] = extra.get("Metascore")
+            if extra.get("imdbRating") not in (None, "N/A"):
+                out["imdb_rating"] = float(extra["imdbRating"])
         self._detail_cache[key] = (time.time(), out)
         return out
+
+    def _list_status(self, kind: str, sid: str) -> str | None:
+        d = self.data or {}
+        for name, key in (("completed", "done_items"), ("watching", "watching"), ("plantowatch", "plan")):
+            for it in d.get(key, []):
+                if it.get("kind") == kind and str(it.get("id")) == str(sid):
+                    return name
+        return None
+
+    async def async_search(self, q: str, kind: str) -> list[dict[str, Any]]:
+        raw = await self._guard(self.client.search(q, kind))
+        out = []
+        for it in raw:
+            ids = it.get("ids") or {}
+            if not ids.get("simkl_id") and not ids.get("simkl"):
+                continue
+            out.append(
+                {
+                    "id": ids.get("simkl_id") or ids.get("simkl"),
+                    "kind": _kind_of(it.get("endpoint_type") or it.get("type")),
+                    "title": it.get("title"),
+                    "year": it.get("year"),
+                    "poster": it.get("poster"),
+                    "imdb": ids.get("imdb"),
+                    "rating": _rate(it.get("ratings"), "simkl"),
+                }
+            )
+        return out
+
+    async def async_trending(self, kind: str, period: str) -> list[dict[str, Any]]:
+        key = ("trend", kind, period)
+        hit = self._detail_cache.get(key)  # type: ignore[arg-type]
+        if hit and time.time() - hit[0] < TREND_TTL:
+            return hit[1]  # type: ignore[return-value]
+        feed = {"show": "tv", "movie": "movies", "anime": "anime"}[kind]
+        raw = await self._guard(self.client.trending(feed, period))
+        out = []
+        for i, it in enumerate(raw):
+            ids = it.get("ids") or {}
+            sid = ids.get("simkl_id") or ids.get("simkl")
+            if not sid:
+                continue
+            year = None
+            if isinstance(it.get("release_date"), str) and it["release_date"][:4].isdigit():
+                year = int(it["release_date"][:4])
+            out.append(
+                {
+                    "id": sid,
+                    "kind": kind,
+                    "rank": i + 1,
+                    "title": it.get("title"),
+                    "year": year or it.get("year"),
+                    "poster": it.get("poster"),
+                    "imdb": ids.get("imdb"),
+                    "rating": _rate(it.get("ratings"), "simkl") or _rate(it.get("ratings"), "imdb"),
+                }
+            )
+        self._detail_cache[key] = (time.time(), out)  # type: ignore[index,assignment]
+        return out
+
+    async def _guard(self, coro: Any) -> Any:
+        try:
+            if await self.client.ensure_token():
+                await self._persist_tokens()
+            return await coro
+        except SimklAuthError:
+            self.config_entry.async_start_reauth(self.hass)
+            raise
+
+    async def async_mark(
+        self, kind: str, sid: str, *, season: int | None, episode: int | None, watched: bool
+    ) -> None:
+        await self._write(
+            self.client.history(kind, sid, season=season, episode=episode, remove=not watched), kind, sid
+        )
+
+    async def async_set_list(self, kind: str, sid: str, to: str) -> None:
+        if kind == "movie" and to == "completed":
+            await self._write(self.client.history(kind, sid), kind, sid)
+        else:
+            await self._write(self.client.add_to_list(kind, sid, to), kind, sid)
+
+    async def _write(self, coro: Any, kind: str, sid: str) -> None:
+        try:
+            await self._guard(coro)
+        except SimklPermission:
+            self.config_entry.async_start_reauth(self.hass)
+            raise
+        self._detail_cache.pop((kind, str(sid)), None)
+        self._activity_stamp = None
+        await self.async_request_refresh()
 
     # -------------------------------------------------------------- calendar
     def _mine(self) -> dict[tuple[str, int], str]:

@@ -102,12 +102,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             pass
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    entry.async_on_unload(entry.add_update_listener(_reload))
+    opts = dict(entry.options)
+
+    async def _maybe_reload(hass: HomeAssistant, updated: ConfigEntry) -> None:
+        # Token refreshes update entry.data; only options changes need a reload.
+        if dict(updated.options) != opts:
+            await hass.config_entries.async_reload(updated.entry_id)
+
+    entry.async_on_unload(entry.add_update_listener(_maybe_reload))
     return True
-
-
-async def _reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

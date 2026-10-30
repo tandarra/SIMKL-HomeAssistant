@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect SIMKL",
-        "description": "Create a free app at https://simkl.com/settings/developer/ (choose the PIN / device sign-in type), then paste its Client ID here. You approve a code on simkl.com in the next step; no password is entered in Home Assistant.",
+        "description": "Create a free app at {dev_url} (choose the PIN / device sign-in type), then paste its Client ID here. You approve a code on simkl.com in the next step; no password is entered in Home Assistant.",
         "data": {
           "client_id": "Client ID"
         }
@@ -32,7 +32,8 @@
         "title": "SIMKL Hub options",
         "menu_options": {
           "settings": "Calendar and sync",
-          "players": "Players (where Stremio can open)"
+          "players": "Players (where Stremio can open)",
+          "reconnect": "Reconnect SIMKL (grants permission to mark watched)"
         }
       },
       "settings": {
@@ -40,17 +41,28 @@
         "data": {
           "popular_tv": "Popular TV/anime titles to show per month (besides your own list)",
           "popular_movies": "Popular movie releases to show per month (besides your own list)",
-          "scan_minutes": "Sync interval (minutes)"
+          "scan_minutes": "Sync interval (minutes)",
+          "omdb_api_key": "OMDb API key (optional, adds Rotten Tomatoes and Metacritic scores)"
+        },
+        "data_description": {
+          "omdb_api_key": "Free key from omdbapi.com. Leave empty to show only SIMKL and IMDb ratings."
         }
       },
       "players": {
         "title": "Players",
-        "description": "Pick the Android TV / Google TV / Fire TV devices and phones that can open titles in Stremio. Leave both empty to detect them automatically. Add a TV first with the Android TV Remote or Android Debug Bridge integration; phones need the Home Assistant Companion app.",
+        "description": "Tick the Android TV / Google TV / Shield devices and phones that should get an 'Open on...' button. Nothing is detected automatically. Next you can name each one.",
         "data": {
           "players": "TVs and media players",
           "notify_targets": "Phones (Companion app)"
         }
+      },
+      "player_names": {
+        "title": "Name your players",
+        "description": "This is the label shown on each button, for example Nvidia Shield Living Room."
       }
+    },
+    "abort": {
+      "reconnect_started": "Open Settings > Devices & services. A 'Reconnect' prompt for SIMKL Hub is waiting; approve the code on simkl.com."
     }
   },
   "services": {

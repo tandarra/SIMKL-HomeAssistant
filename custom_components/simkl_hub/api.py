@@ -10,6 +10,8 @@ from .const import (
     API_BASE,
     APP_NAME,
     CDN_BASE,
+    OMDB_URL,
+    TREND_BASE,
     DEVICE_GRANT,
     USER_AGENT,
     VERSION,
@@ -24,6 +26,10 @@ class SimklError(Exception):
 
 class SimklAuthError(SimklError):
     """The token was rejected (needs re-authentication)."""
+
+
+class SimklPermission(SimklError):
+    """HTTP 403: the token lacks write access (needs reconnecting)."""
 
 
 class SimklRateLimit(SimklError):
@@ -61,7 +67,9 @@ class SimklClient:
         *,
         params: dict[str, Any] | None = None,
         form: dict[str, Any] | None = None,
+        body: dict[str, Any] | None = None,
         auth: bool = False,
+        bare: bool = False,
     ) -> Any:
         headers = {"User-Agent": USER_AGENT}
         if auth:
@@ -72,13 +80,16 @@ class SimklClient:
             async with self._s.request(
                 method,
                 url,
-                params=self._params(params),
+                params=params if bare else self._params(params),
                 data=form,
+                json=body,
                 headers=headers,
                 timeout=TIMEOUT,
             ) as resp:
                 if resp.status == 401:
                     raise SimklAuthError("401")
+                if resp.status == 403 and auth:
+                    raise SimklPermission("403")
                 if resp.status == 429:
                     raise SimklRateLimit("429")
                 try:
@@ -100,7 +111,7 @@ class SimklClient:
         data = await self._request(
             "POST",
             f"{API_BASE}/oauth2/device",
-            form={"client_id": self.client_id, "scope": "media:read"},
+            form={"client_id": self.client_id, "scope": "media:read media:write"},
         )
         if not isinstance(data, dict) or "device_code" not in data:
             raise SimklError("no device code returned")
@@ -202,6 +213,62 @@ class SimklClient:
             if isinstance(got, list):
                 eps = got
         return (info if isinstance(info, dict) else {}), eps
+
+    # --------------------------------------------------------- search / trending
+    async def search(self, q: str, kind: str = "all") -> list[dict[str, Any]]:
+        path = {"all": "all", "show": "tv", "anime": "anime", "movie": "movie"}[kind]
+        got = await self._request(
+            "GET",
+            f"{API_BASE}/search/{path}",
+            params={"q": q, "extended": "full", "limit": 30},
+            auth=True,
+        )
+        return got if isinstance(got, list) else []
+
+    async def trending(self, kind: str, period: str) -> list[dict[str, Any]]:
+        """kind: tv | movies | anime; period: today | week | month."""
+        got = await self._request("GET", f"{TREND_BASE}/{kind}/{period}_100.json")
+        return got if isinstance(got, list) else []
+
+    # ------------------------------------------------------------ write calls
+    @staticmethod
+    def _ref(kind: str, sid: str) -> tuple[str, dict[str, Any]]:
+        key = {"show": "shows", "anime": "anime", "movie": "movies"}[kind]
+        return key, {"ids": {"simkl": int(sid)}}
+
+    async def history(
+        self,
+        kind: str,
+        sid: str,
+        *,
+        season: int | None = None,
+        episode: int | None = None,
+        remove: bool = False,
+    ) -> None:
+        """Mark a movie/show/season/episode watched (or unwatch it)."""
+        key, item = self._ref(kind, sid)
+        if kind != "movie" and season is not None:
+            eps = [{"number": episode}] if episode is not None else []
+            season_obj: dict[str, Any] = {"number": season}
+            if eps:
+                season_obj["episodes"] = eps
+            item["seasons"] = [season_obj]
+        await self._request(
+            "POST",
+            f"{API_BASE}/sync/history{'/remove' if remove else ''}",
+            body={key: [item]},
+            auth=True,
+        )
+
+    async def add_to_list(self, kind: str, sid: str, to: str) -> None:
+        key, item = self._ref(kind, sid)
+        item["to"] = to
+        await self._request("POST", f"{API_BASE}/sync/add-to-list", body={key: [item]}, auth=True)
+
+    async def omdb(self, key: str, imdb: str) -> dict[str, Any]:
+        """Optional extra scores (Rotten Tomatoes, Metacritic) from OMDb."""
+        data = await self._request("GET", OMDB_URL, params={"i": imdb, "apikey": key}, bare=True)
+        return data if isinstance(data, dict) else {}
 
     # ------------------------------------------------------------- public CDN
     async def calendar_month(self, year: int, month: int, kind: str) -> dict[str, Any]:
