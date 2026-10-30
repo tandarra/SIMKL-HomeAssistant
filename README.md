@@ -69,8 +69,10 @@ Stremio opens the title page for that episode, so you pick the stream from there
 
 ## Options
 
-Settings → Devices & services → SIMKL Hub → Configure: how many popular TV/anime titles and movies to add to the
-"major" calendar filter per month, and the sync interval (default 20 min).
+Settings → Devices & services → SIMKL Hub → Configure:
+
+- **Calendar and sync**: how many popular TV/anime titles and movies to add to the "major" calendar filter per month, and the sync interval (default 20 min).
+- **Players**: pick the TVs / media players and phones that appear as "send to" buttons. Leave empty to detect them automatically. Add a TV first with the *Android TV Remote* or *Android Debug Bridge* integration; phones need the Companion app.
 
 ## Notes on SIMKL limits
 

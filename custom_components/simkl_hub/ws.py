@@ -9,9 +9,9 @@ from homeassistant.auth.permissions.const import POLICY_CONTROL
 from homeassistant.core import HomeAssistant, callback
 
 from .api import SimklError
-from .const import DOMAIN
+from .const import CONF_NOTIFY, CONF_PLAYERS, DOMAIN
 from .coordinator import SimklCoordinator
-from .play import async_open, discover_players, stremio_link
+from .play import async_open, configured_players, discover_players, stremio_link
 
 
 def _coordinator(hass: HomeAssistant, entry_id: str | None) -> SimklCoordinator | None:
@@ -103,6 +103,13 @@ async def ws_refresh(hass: HomeAssistant, connection: websocket_api.ActiveConnec
 @websocket_api.websocket_command({vol.Required("type"): "simkl_hub/players"})
 @callback
 def ws_players(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    c = _coordinator(hass, None)
+    if c is not None:
+        chosen = c.config_entry.options.get(CONF_PLAYERS) or []
+        phones = c.config_entry.options.get(CONF_NOTIFY) or []
+        if chosen or phones:
+            connection.send_result(msg["id"], configured_players(hass, chosen, phones))
+            return
     connection.send_result(msg["id"], discover_players(hass))
 
 

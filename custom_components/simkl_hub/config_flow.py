@@ -10,6 +10,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import SimklClient, SimklError
@@ -17,6 +18,8 @@ from .const import (
     CONF_ACCESS_TOKEN,
     CONF_CLIENT_ID,
     CONF_EXPIRES_AT,
+    CONF_NOTIFY,
+    CONF_PLAYERS,
     CONF_POPULAR_MOVIES,
     CONF_POPULAR_TV,
     CONF_REFRESH_TOKEN,
@@ -152,14 +155,17 @@ class SimklConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class SimklOptionsFlow(OptionsFlow):
-    """Tune the release calendar and sync interval."""
+    """Calendar/sync tuning and the list of devices that can open Stremio."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return self.async_show_menu(step_id="init", menu_options=["settings", "players"])
+
+    async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            return self.async_create_entry(data=user_input)
+            return self.async_create_entry(data={**self.config_entry.options, **user_input})
         o = self.config_entry.options
         return self.async_show_form(
-            step_id="init",
+            step_id="settings",
             data_schema=vol.Schema(
                 {
                     vol.Required(
@@ -172,6 +178,35 @@ class SimklOptionsFlow(OptionsFlow):
                     vol.Required(
                         CONF_SCAN_MINUTES, default=o.get(CONF_SCAN_MINUTES, DEFAULT_SCAN_MINUTES)
                     ): vol.All(int, vol.Range(min=10, max=240)),
+                }
+            ),
+        )
+
+    async def async_step_players(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data={**self.config_entry.options, **user_input})
+        o = self.config_entry.options
+        phones = sorted(
+            f"notify.{s}"
+            for s in self.hass.services.async_services_for_domain("notify")
+            if s.startswith("mobile_app_")
+        )
+        return self.async_show_form(
+            step_id="players",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_PLAYERS, default=o.get(CONF_PLAYERS, [])
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain=["remote", "media_player"], multiple=True)
+                    ),
+                    vol.Optional(
+                        CONF_NOTIFY, default=o.get(CONF_NOTIFY, [])
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=phones, multiple=True, mode=selector.SelectSelectorMode.DROPDOWN
+                        )
+                    ),
                 }
             ),
         )

@@ -108,3 +108,22 @@ async def test_config_flow(hass, aioclient_mock, monkeypatch):
     assert r["type"] == FlowResultType.CREATE_ENTRY
     assert r["title"] == "kurt"
     assert r["data"]["access_token"] == "tok" and r["data"]["client_id"] == "cid"
+
+
+async def test_players_option(hass, entry, hass_ws_client):
+    from homeassistant.data_entry_flow import FlowResultType
+
+    hass.states.async_set("remote.lounge_tv", "off", {"friendly_name": "Lounge TV"})
+    r = await hass.config_entries.options.async_init(entry.entry_id)
+    assert r["type"] == FlowResultType.MENU
+    r = await hass.config_entries.options.async_configure(r["flow_id"], {"next_step_id": "players"})
+    assert r["type"] == FlowResultType.FORM
+    r = await hass.config_entries.options.async_configure(
+        r["flow_id"], {"players": ["remote.lounge_tv"], "notify_targets": []}
+    )
+    assert r["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    ws = await hass_ws_client(hass)
+    await ws.send_json({"id": 1, "type": "simkl_hub/players"})
+    res = await ws.receive_json()
+    assert res["result"] == [{"id": "remote.lounge_tv", "name": "Lounge TV", "type": "chosen"}]

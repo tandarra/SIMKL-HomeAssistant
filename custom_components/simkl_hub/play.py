@@ -73,6 +73,21 @@ async def async_open(hass: HomeAssistant, target: str, link: str, title: str = "
         raise HomeAssistantError(f"Unsupported target {target}")
 
 
+def configured_players(hass: HomeAssistant, players: list[str], notify: list[str]) -> list[dict[str, str]]:
+    """Devices the user picked in the options flow."""
+    reg = er.async_get(hass)
+    out: list[dict[str, str]] = []
+    for eid in players:
+        state = hass.states.get(eid)
+        ent = reg.async_get(eid)
+        name = (state.name if state else None) or (ent and (ent.name or ent.original_name)) or eid
+        out.append({"id": eid, "name": name, "type": "chosen"})
+    for svc in notify:
+        label = svc.split("mobile_app_", 1)[-1].replace("_", " ").title()
+        out.append({"id": svc, "name": f"{label} (phone)", "type": "phone"})
+    return out
+
+
 def discover_players(hass: HomeAssistant) -> list[dict[str, str]]:
     """Android/Google TV style devices plus companion-app notify services."""
     reg = er.async_get(hass)

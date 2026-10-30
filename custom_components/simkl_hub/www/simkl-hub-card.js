@@ -187,7 +187,7 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
       const what = this._ep != null ? 'S' + this._season + 'E' + this._ep : (it.kind === 'movie' ? 'movie' : 'series');
       const pl = this._playerList();
       h += '<div class="acts"><a href="' + esc(this._link()) + '"><button class="pri">Open in Stremio here (' + what + ')</button></a>' + pl.map((p, i) => '<button data-p="' + i + '">' + esc(p.name) + '</button>').join('') + (this._toast ? '<span class="toast ' + (this._toastBad ? 'bad' : '') + '">' + esc(this._toast) + '</span>' : '') + '</div>';
-      if (!pl.length) h += '<div class="m" style="margin-top:8px">No Android TV or phone targets found. Add the Android TV Remote integration, or list them in the card config under players.</div>';
+      if (!pl.length) h += '<div class="m" style="margin-top:10px;line-height:1.5">No TVs or phones found to send this to. To add a TV, go to <b>Settings → Devices &amp; services → Add integration</b> and choose <b>Android TV Remote</b> (Shield, Google TV, Chromecast with Google TV) or <b>Android Debug Bridge</b> (Fire TV). For a phone, install the Home Assistant Companion app. Then pick them under <b>SIMKL Hub → Configure → Players</b>.</div>';
       return h;
     }
 

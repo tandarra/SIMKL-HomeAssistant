@@ -4,7 +4,9 @@
       "user": {
         "title": "Connect SIMKL",
         "description": "Create a free app at https://simkl.com/settings/developer/ (choose the PIN / device sign-in type), then paste its Client ID here. You approve a code on simkl.com in the next step; no password is entered in Home Assistant.",
-        "data": { "client_id": "Client ID" }
+        "data": {
+          "client_id": "Client ID"
+        }
       },
       "reauth_confirm": {
         "title": "Reconnect SIMKL",
@@ -14,7 +16,9 @@
     "progress": {
       "approve": "Open {url} and enter the code **{code}** while signed in to the SIMKL account you want to use. This page continues automatically once you approve."
     },
-    "error": { "cannot_start": "SIMKL did not accept that Client ID. Check it and try again." },
+    "error": {
+      "cannot_start": "SIMKL did not accept that Client ID. Check it and try again."
+    },
     "abort": {
       "already_configured": "This SIMKL account is already set up.",
       "denied": "Sign-in was declined on simkl.com.",
@@ -26,10 +30,25 @@
     "step": {
       "init": {
         "title": "SIMKL Hub options",
+        "menu_options": {
+          "settings": "Calendar and sync",
+          "players": "Players (where Stremio can open)"
+        }
+      },
+      "settings": {
+        "title": "Calendar and sync",
         "data": {
           "popular_tv": "Popular TV/anime titles to show per month (besides your own list)",
           "popular_movies": "Popular movie releases to show per month (besides your own list)",
           "scan_minutes": "Sync interval (minutes)"
+        }
+      },
+      "players": {
+        "title": "Players",
+        "description": "Pick the Android TV / Google TV / Fire TV devices and phones that can open titles in Stremio. Leave both empty to detect them automatically. Add a TV first with the Android TV Remote or Android Debug Bridge integration; phones need the Home Assistant Companion app.",
+        "data": {
+          "players": "TVs and media players",
+          "notify_targets": "Phones (Companion app)"
         }
       }
     }
@@ -39,12 +58,30 @@
       "name": "Open in Stremio",
       "description": "Open a series, episode or movie in Stremio on an Android/Google TV device, an ADB-connected device or a phone.",
       "fields": {
-        "target": { "name": "Target", "description": "A remote, media_player or notify.mobile_app_* entity/service." },
-        "imdb": { "name": "IMDb ID", "description": "e.g. tt0944947." },
-        "kind": { "name": "Kind", "description": "show, anime or movie." },
-        "season": { "name": "Season", "description": "Optional season number." },
-        "episode": { "name": "Episode", "description": "Optional episode number." },
-        "title": { "name": "Title", "description": "Used for a search link when there is no IMDb ID." }
+        "target": {
+          "name": "Target",
+          "description": "A remote, media_player or notify.mobile_app_* entity/service."
+        },
+        "imdb": {
+          "name": "IMDb ID",
+          "description": "e.g. tt0944947."
+        },
+        "kind": {
+          "name": "Kind",
+          "description": "show, anime or movie."
+        },
+        "season": {
+          "name": "Season",
+          "description": "Optional season number."
+        },
+        "episode": {
+          "name": "Episode",
+          "description": "Optional episode number."
+        },
+        "title": {
+          "name": "Title",
+          "description": "Used for a search link when there is no IMDb ID."
+        }
       }
     }
   }
