@@ -190,4 +190,7 @@ async def test_calendar_prefs_filter(hass, entry, hass_ws_client):
     assert "My Show" in {i["title"] for i in every}
     await ws.send_json({"id": 2, "type": "simkl_hub/prefs_set", "kinds": {"show": False}, "hidden": []})
     assert (await ws.receive_json())["success"]
-    assert await c.async_calendar(2026, 11, "all") == []
+    # turning a type off trims popular extras only; titles on your own list stay
+    titles = {i["title"] for i in await c.async_calendar(2026, 11, "all")}
+    assert "My Show" in titles
+    assert "Big Show" not in titles

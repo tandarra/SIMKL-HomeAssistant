@@ -400,8 +400,7 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         hidden = set(self.prefs["hidden"])
         results: list[dict[str, Any]] = []
         for file_kind, kind in (("tv", "show"), ("anime", "anime"), ("movie_release", "movie")):
-            if not self.prefs["kinds"].get(kind, True):
-                continue
+            kind_on = self.prefs["kinds"].get(kind, True)
             data = await self._month_file(year, month, file_kind)
             meta = data["metadata"]
             cal = data["calendar"]
@@ -419,6 +418,8 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if f"{kind}|{sid}" in hidden:
                     continue
                 is_mine = (kind, int(sid)) in mine
+                if not kind_on and not is_mine:
+                    continue  # the type filter only trims popular extras; titles on your list stay
                 is_pop = str(sid) in popular and m.get("pop", 0) > 0
                 if scope == "mine" and not is_mine:
                     continue
