@@ -31,6 +31,7 @@ def async_register(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_state)
     websocket_api.async_register_command(hass, ws_detail)
     websocket_api.async_register_command(hass, ws_calendar)
+    websocket_api.async_register_command(hass, ws_completed)
     websocket_api.async_register_command(hass, ws_refresh)
     websocket_api.async_register_command(hass, ws_players)
     websocket_api.async_register_command(hass, ws_open)
@@ -57,6 +58,7 @@ async def ws_state(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
             "watching": d.get("watching", []),
             "plan": d.get("plan", []),
             "completed": d.get("completed", {}),
+            "done": [f"{x['kind']}|{x['id']}" for x in d.get("done_items", [])],
             "ok": c.last_update_success,
         },
     )
@@ -86,6 +88,13 @@ async def ws_detail(hass: HomeAssistant, connection: websocket_api.ActiveConnect
     except SimklError as err:
         _LOGGER.warning("SIMKL detail %s/%s failed: %s", msg["kind"], msg["simkl_id"], err)
         connection.send_error(msg["id"], "simkl_error", str(err))
+
+
+@websocket_api.websocket_command({vol.Required("type"): "simkl_hub/completed"})
+@callback
+def ws_completed(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    c = _coordinator(hass, None)
+    connection.send_result(msg["id"], (c.data or {}).get("done_items", []) if c else [])
 
 
 @websocket_api.websocket_command(

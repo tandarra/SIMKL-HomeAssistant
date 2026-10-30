@@ -118,6 +118,7 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             watching: list[dict[str, Any]] = []
             plan: list[dict[str, Any]] = []
             completed: dict[str, int] = {}
+            done_items: list[dict[str, Any]] = []
             for kind in ("shows", "anime", "movies"):
                 single = SINGULAR[kind]
                 if kind != "movies":
@@ -127,9 +128,10 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         watching.append(_tidy(it, single, "watching"))
                 for it in await self.client.all_items(kind, "plantowatch"):
                     plan.append(_tidy(it, single, "plantowatch"))
-                completed[kind] = len(
-                    await self.client.all_items(kind, "completed", {"extended": "simkl_ids_only"})
-                )
+                finished = await self.client.all_items(kind, "completed")
+                completed[kind] = len(finished)
+                for it in finished:
+                    done_items.append(_tidy(it, single, "completed"))
         except SimklAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except SimklError as err:
@@ -138,10 +140,12 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._activity_stamp = stamp
         watching.sort(key=lambda x: x.get("last") or "", reverse=True)
         plan.sort(key=lambda x: x.get("added") or "", reverse=True)
+        done_items.sort(key=lambda x: x.get("last") or x.get("added") or "", reverse=True)
         return {
             "watching": watching,
             "plan": plan,
             "completed": completed,
+            "done_items": done_items,
             "updated": time.time(),
         }
 
@@ -212,7 +216,7 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _list_status(self, kind: str, sid: str) -> str | None:
         d = self.data or {}
-        for name, key in (("watching", "watching"), ("plantowatch", "plan")):
+        for name, key in (("completed", "done_items"), ("watching", "watching"), ("plantowatch", "plan")):
             for it in d.get(key, []):
                 if it.get("kind") == kind and str(it.get("id")) == str(sid):
                     return name

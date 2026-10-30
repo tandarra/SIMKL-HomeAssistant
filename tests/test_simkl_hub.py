@@ -46,6 +46,16 @@ async def entry(hass: HomeAssistant, aioclient_mock):
     return e
 
 
+async def test_completed_listing(hass, entry, hass_ws_client):
+    c = hass.data[DOMAIN][entry.entry_id]
+    c.data["done_items"] = [{"id": 7, "kind": "movie", "title": "Seen It", "poster": None}]
+    ws = await hass_ws_client(hass)
+    await ws.send_json({"id": 1, "type": "simkl_hub/state"})
+    assert "movie|7" in (await ws.receive_json())["result"]["done"]
+    await ws.send_json({"id": 2, "type": "simkl_hub/completed"})
+    assert (await ws.receive_json())["result"][0]["title"] == "Seen It"
+
+
 async def test_sync_and_sensors(hass, entry):
     assert hass.states.get("sensor.simkl_tester_watching").state == "1"
     assert hass.states.get("sensor.simkl_tester_episodes_waiting").state == "1"
