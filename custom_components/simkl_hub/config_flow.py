@@ -62,6 +62,7 @@ class SimklConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema({vol.Required(CONF_CLIENT_ID): str}),
             errors=errors,
+            description_placeholders={"dev_url": "https://simkl.com/settings/developer/"},
         )
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect SIMKL",
-        "description": "Create a free app at https://simkl.com/settings/developer/ (choose the PIN / device sign-in type), then paste its Client ID here. You approve a code on simkl.com in the next step; no password is entered in Home Assistant.",
+        "description": "Create a free app at {dev_url} (choose the PIN / device sign-in type), then paste its Client ID here. You approve a code on simkl.com in the next step; no password is entered in Home Assistant.",
         "data": {
           "client_id": "Client ID"
         }
