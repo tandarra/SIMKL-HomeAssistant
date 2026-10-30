@@ -93,6 +93,14 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
 .it.seen img{opacity:.55}.ep.seen b{color:var(--ok)}.ep.seen span{color:var(--mute)}
 .qm{position:absolute;z-index:3;right:8px;top:44px;width:30px;height:30px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:15px;background:rgba(0,0,0,.7);opacity:0;transition:opacity .12s}
 .it:hover .qm,.it:focus-within .qm{opacity:1}@media(hover:none){.qm{opacity:.9}}.qm:hover{background:var(--ok);border-color:var(--ok);color:#04251a}
+.cog{padding:5px 10px;font-size:15px;line-height:1}
+.cs{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px}
+.cs h4{margin:0;font-size:14px}.cs .row2{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.cs label{display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer}
+.cs input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.cs .lst{max-height:300px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 14px;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.cs .lst label{padding:4px 0;min-width:0}.cs .lst span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs input[type=search]{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 12px;min-width:200px;flex:1}
 .rk{z-index:2;position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:700}
 .it{position:relative}
 .sub2{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
@@ -335,6 +343,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       return '<div class="row" data-ci="' + esc(x.k + '|' + x.id + '|' + (x.s == null ? '' : x.s) + '|' + (x.e == null ? '' : x.e)) + '"><img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="x"><div class="t">' + esc(x.title) + tags + '</div><div class="m">' + sub + '</div><div class="m">' + fmtTime(x.date) + (x.rating ? ' · ★ ' + x.rating : '') + '</div></div></div>';
     }
     _calendarView() {
+      if (!this._prefs && !this._prefsBusy) { this._prefsBusy = true; this._hass.callWS({ type: 'simkl_hub/prefs' }).then((p) => { this._prefs = p; this._prefsBusy = false; this._render(); }).catch(() => { this._prefs = { kinds: { show: true, anime: true, movie: true }, hidden: [] }; this._prefsBusy = false; }); }
       this._ensureMonths();
       const map = this._byDay(), today = dkey(new Date());
       const ctl = () => {
@@ -344,7 +353,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
         else label = 'Next 30 days';
         return '<div class="ctl"><button class="sm" data-nav="-1">‹</button><button class="sm" data-nav="0">Today</button><button class="sm" data-nav="1">›</button><h3>' + label + '</h3><span class="sp"></span>' +
           '<div class="seg">' + [['month', 'Month'], ['week', 'Week'], ['agenda', 'Agenda']].map(([k, l]) => '<button data-v="' + k + '" class="' + (this._view === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
-          '<div class="seg">' + [['mine', 'My list'], ['major', 'My list + major'], ['all', 'Everything']].map(([k, l]) => '<button data-sc="' + k + '" class="' + (this._scope === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div></div>';
+          '<div class="seg">' + [['mine', 'My list'], ['major', 'My list + major'], ['all', 'Everything']].map(([k, l]) => '<button data-sc="' + k + '" class="' + (this._scope === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div><button class="cog ' + (this._cog ? 'on' : '') + '" data-cog="1" title="Calendar settings">⚙</button></div>' + (this._cog ? this._cogPanel() : '');
       };
       const dayPanel = () => { const a = map[this._day] || []; const d = new Date(this._day + 'T12:00:00'); return '<div class="panel"><h4>' + d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + '</h4>' + (a.length ? a.map((x) => this._dayRow(x)).join('') : '<div class="empty">Nothing scheduled.</div>') + '</div>'; };
       if (this._view === 'month') {
@@ -366,6 +375,23 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       let out = ''; const n = new Date();
       for (let i = 0; i < 30; i++) { const d = new Date(n.getFullYear(), n.getMonth(), n.getDate() + i); const k = dkey(d), a = map[k] || []; if (!a.length) continue; out += '<h5 class="' + (k === today ? 'today' : '') + '">' + (i === 0 ? 'Today · ' : i === 1 ? 'Tomorrow · ' : '') + d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + '</h5>' + a.map((x) => this._dayRow(x)).join(''); }
       return ctl() + '<div class="ag panel">' + (out || '<div class="empty">Nothing scheduled in the next 30 days.</div>') + '</div>';
+    }
+    _cogPanel() {
+      const p = this._prefs || { kinds: { show: true, anime: true, movie: true }, hidden: [] }, hid = new Set(p.hidden || []);
+      const st = this._st || {}, seen = new Set(), items = [];
+      [...(st.watching || []), ...(st.plan || [])].forEach((x) => { const k = x.kind + '|' + x.id; if (!seen.has(k)) { seen.add(k); items.push(x); } });
+      items.sort((a, b) => String(a.title).localeCompare(String(b.title)));
+      const kinds = [['show', 'TV series'], ['anime', 'Anime'], ['movie', 'Movies']].map(([k, l]) => '<label><input type="checkbox" data-pk="' + k + '"' + (p.kinds[k] !== false ? ' checked' : '') + '> ' + l + '</label>').join('');
+      const rows = items.map((x) => { const k = x.kind + '|' + x.id; return '<label data-t="' + esc(String(x.title).toLowerCase()) + '"><input type="checkbox" data-hk="' + esc(k) + '"' + (hid.has(k) ? '' : ' checked') + '><span title="' + esc(x.title) + '">' + esc(x.title) + (x.kind !== 'show' ? ' <small style="color:var(--dim)">(' + x.kind + ')</small>' : '') + '</span></label>'; }).join('');
+      const shown = items.filter((x) => !hid.has(x.kind + '|' + x.id)).length;
+      return '<div class="cs"><h4>Show on the calendar</h4><div class="row2">' + kinds + '</div>' +
+        '<h4>Titles I follow <span class="m">(' + shown + ' of ' + items.length + ' shown; untick to remove one from the calendar)</span></h4>' +
+        '<div class="row2"><input type="search" data-cq placeholder="Filter titles…"><button class="sm" data-cb="all">Tick all</button><button class="sm" data-cb="none">Untick all</button><button class="sm" data-cb="recent">Only watched in the last 90 days</button><button class="sm pri" data-cog="1">Done</button></div>' +
+        '<div class="lst">' + (rows || '<div class="m">Nothing in Watching or Plan to watch yet.</div>') + '</div></div>';
+    }
+    async _savePrefs() {
+      try { this._prefs = await this._hass.callWS({ type: 'simkl_hub/prefs_set', kinds: this._prefs.kinds, hidden: this._prefs.hidden }); } catch (e) { this._flash((e && (e.message || e.code)) || 'Could not save'); }
+      this._cal = {}; this._loading = {}; this._render();
     }
     _weekStart() { const b = this._wk || new Date(); const d = new Date(b.getFullYear(), b.getMonth(), b.getDate()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
     _nav(n) {
@@ -412,6 +438,15 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
         try { await this._hass.callWS({ type: 'simkl_hub/mark', kind, simkl_id: id }); this._st = { ...this._st, done: [...((this._st && this._st.done) || []), kind + '|' + id] }; this._done = null; this._render(); this._loadState(); }
         catch (err) { b.textContent = '✓'; this._flash((err && (err.message || err.code)) || 'Could not mark as watched'); }
       }));
+      on('[data-cog]', () => { this._cog = !this._cog; this._render(); });
+      root.querySelectorAll('[data-pk]').forEach((b) => b.addEventListener('change', () => { this._prefs.kinds[b.dataset.pk] = b.checked; this._savePrefs(); }));
+      root.querySelectorAll('[data-hk]').forEach((b) => b.addEventListener('change', () => { const h = new Set(this._prefs.hidden); if (b.checked) h.delete(b.dataset.hk); else h.add(b.dataset.hk); this._prefs.hidden = [...h]; clearTimeout(this._pt); this._pt = setTimeout(() => this._savePrefs(), 600); const hd = root.querySelector('.cs h4 .m'); if (hd) hd.textContent = '(' + root.querySelectorAll('[data-hk]:checked').length + ' of ' + root.querySelectorAll('[data-hk]').length + ' shown; untick to remove one from the calendar)'; }));
+      root.querySelectorAll('[data-cq]').forEach((i) => i.addEventListener('input', () => { const q = i.value.trim().toLowerCase(); root.querySelectorAll('.cs .lst label').forEach((l) => { l.style.display = !q || (l.dataset.t || '').includes(q) ? '' : 'none'; }); }));
+      on('[data-cb]', (b) => {
+        const q = (root.querySelector('[data-cq]') || { value: '' }).value.trim().toLowerCase(), items = [...((this._st && this._st.watching) || []), ...((this._st && this._st.plan) || [])], h = new Set(this._prefs.hidden), cutoff = Date.now() - 90 * 864e5;
+        items.forEach((x) => { if (q && !String(x.title).toLowerCase().includes(q)) return; const k = x.kind + '|' + x.id; const recent = x.status === 'plantowatch' || (x.last && new Date(x.last).getTime() >= cutoff); if (b.dataset.cb === 'all' || (b.dataset.cb === 'recent' && recent)) h.delete(k); else h.add(k); });
+        this._prefs.hidden = [...h]; this._savePrefs();
+      });
       on('[data-trl]', () => { this._trailer = !this._trailer; this._render(); });
       on('[data-mk]', (b) => this._mark(b.dataset.mk));
       on('[data-ls]', (b) => this._setList(b.dataset.ls));

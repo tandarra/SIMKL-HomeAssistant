@@ -178,3 +178,16 @@ async def test_search_trending_and_writes(hass, entry, aioclient_mock, hass_ws_c
     await ws.send_json({"id": 4, "type": "simkl_hub/set_list", "kind": "movie", "simkl_id": "5", "to": "plantowatch"})
     assert (await ws.receive_json())["success"]
     assert [c for c in aioclient_mock.mock_calls if c[0] == "POST"][-1][2] == {"movies": [{"ids": {"simkl": 5}, "to": "plantowatch"}]}
+
+
+async def test_calendar_prefs_filter(hass, entry, hass_ws_client):
+    c = hass.data[DOMAIN][entry.entry_id]
+    ws = await hass_ws_client(hass)
+    await ws.send_json({"id": 1, "type": "simkl_hub/prefs_set", "kinds": {"show": True, "anime": False, "movie": True}, "hidden": ["show|22"]})
+    assert (await ws.receive_json())["success"]
+    every = await c.async_calendar(2026, 11, "all")
+    assert "Big Show" not in {i["title"] for i in every}  # id 22 hidden
+    assert "My Show" in {i["title"] for i in every}
+    await ws.send_json({"id": 2, "type": "simkl_hub/prefs_set", "kinds": {"show": False}, "hidden": []})
+    assert (await ws.receive_json())["success"]
+    assert await c.async_calendar(2026, 11, "all") == []

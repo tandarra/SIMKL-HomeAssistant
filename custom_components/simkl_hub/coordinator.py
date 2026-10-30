@@ -10,6 +10,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -95,6 +96,8 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._cal_cache: dict[tuple[int, int, str], tuple[float, dict[str, Any]]] = {}
         self._detail_cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
         self._cal_lock = asyncio.Lock()
+        self._store = Store[dict[str, Any]](hass, 1, f"{DOMAIN}_{entry.entry_id}_prefs")
+        self.prefs: dict[str, Any] = {"kinds": {"show": True, "anime": True, "movie": True}, "hidden": []}
 
     # ------------------------------------------------------------------ sync
     async def _persist_tokens(self) -> None:
@@ -306,6 +309,19 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._activity_stamp = None
         await self.async_request_refresh()
 
+    # ----------------------------------------------------------------- prefs
+    async def async_load_prefs(self) -> None:
+        saved = await self._store.async_load()
+        if isinstance(saved, dict):
+            self.prefs["kinds"].update({k: bool(v) for k, v in (saved.get("kinds") or {}).items() if k in self.prefs["kinds"]})
+            self.prefs["hidden"] = [str(x) for x in saved.get("hidden") or []]
+
+    async def async_set_prefs(self, kinds: dict[str, bool], hidden: list[str]) -> dict[str, Any]:
+        self.prefs["kinds"].update({k: bool(v) for k, v in kinds.items() if k in self.prefs["kinds"]})
+        self.prefs["hidden"] = sorted({str(x) for x in hidden})
+        await self._store.async_save(self.prefs)
+        return self.prefs
+
     # -------------------------------------------------------------- calendar
     def _mine(self) -> dict[tuple[str, int], str]:
         mine: dict[tuple[str, int], str] = {}
@@ -368,8 +384,11 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         top_mv = int(opts.get(CONF_POPULAR_MOVIES, DEFAULT_POPULAR_MOVIES))
         mine = self._mine()
         active = self._active() if scope == "alerts" else set()
+        hidden = set(self.prefs["hidden"])
         results: list[dict[str, Any]] = []
         for file_kind, kind in (("tv", "show"), ("anime", "anime"), ("movie_release", "movie")):
+            if not self.prefs["kinds"].get(kind, True):
+                continue
             data = await self._month_file(year, month, file_kind)
             meta = data["metadata"]
             cal = data["calendar"]
@@ -384,6 +403,8 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for c in cal:
                 sid = c.get("simkl_id")
                 m = meta.get(str(sid), {})
+                if f"{kind}|{sid}" in hidden:
+                    continue
                 is_mine = (kind, int(sid)) in mine
                 is_pop = str(sid) in popular and m.get("pop", 0) > 0
                 if scope == "mine" and not is_mine:

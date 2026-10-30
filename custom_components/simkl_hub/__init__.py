@@ -82,6 +82,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data.get(CONF_EXPIRES_AT, 0),
     )
     coordinator = SimklCoordinator(hass, entry, client)
+    await coordinator.async_load_prefs()
     await coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN][entry.entry_id] = coordinator
 

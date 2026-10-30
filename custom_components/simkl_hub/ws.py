@@ -32,6 +32,8 @@ def async_register(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_detail)
     websocket_api.async_register_command(hass, ws_calendar)
     websocket_api.async_register_command(hass, ws_completed)
+    websocket_api.async_register_command(hass, ws_prefs)
+    websocket_api.async_register_command(hass, ws_prefs_set)
     websocket_api.async_register_command(hass, ws_refresh)
     websocket_api.async_register_command(hass, ws_players)
     websocket_api.async_register_command(hass, ws_open)
@@ -95,6 +97,29 @@ async def ws_detail(hass: HomeAssistant, connection: websocket_api.ActiveConnect
 def ws_completed(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     c = _coordinator(hass, None)
     connection.send_result(msg["id"], (c.data or {}).get("done_items", []) if c else [])
+
+
+@websocket_api.websocket_command({vol.Required("type"): "simkl_hub/prefs"})
+@callback
+def ws_prefs(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    c = _coordinator(hass, None)
+    connection.send_result(msg["id"], c.prefs if c else {})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "simkl_hub/prefs_set",
+        vol.Required("kinds"): {vol.Optional(k): bool for k in ("show", "anime", "movie")},
+        vol.Required("hidden"): [str],
+    }
+)
+@websocket_api.async_response
+async def ws_prefs_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    c = _coordinator(hass, None)
+    if c is None:
+        connection.send_error(msg["id"], "not_connected", "SIMKL is not set up")
+        return
+    connection.send_result(msg["id"], await c.async_set_prefs(msg["kinds"], msg["hidden"]))
 
 
 @websocket_api.websocket_command(
