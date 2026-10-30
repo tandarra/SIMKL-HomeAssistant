@@ -340,7 +340,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
     _dayRow(x) {
       const tags = (x.mine ? '<span class="tag mine">' + (x.st === 'watching' ? 'watching' : 'my list') + '</span>' : '') + (this._status(x.k, x.id) === 'done' ? '<span class="tag fin">watched</span>' : '') + (x.fin ? '<span class="tag fin">' + esc(String(x.fin).replace(/_/g, ' ')) + '</span>' : '');
       const sub = x.k === 'movie' ? 'Movie release' : [epLabel(x), x.et].filter(Boolean).map(esc).join(' · ');
-      return '<div class="row" data-ci="' + esc(x.k + '|' + x.id + '|' + (x.s == null ? '' : x.s) + '|' + (x.e == null ? '' : x.e)) + '"><img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="x"><div class="t">' + esc(x.title) + tags + '</div><div class="m">' + sub + '</div><div class="m">' + fmtTime(x.date) + (x.rating ? ' · ★ ' + x.rating : '') + '</div></div></div>';
+      return '<div class="row" data-ci="' + esc(x.k + '|' + x.id + '|' + (x.s == null ? '' : x.s) + '|' + (x.e == null ? '' : x.e)) + '"><img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="x"><div class="t">' + esc(x.title) + tags + '</div><div class="m">' + sub + '</div><div class="m">' + (x.k === 'movie' ? 'Release day' : fmtTime(x.date)) + (x.rating ? ' · ★ ' + x.rating : '') + '</div></div></div>';
     }
     _calendarView() {
       if (!this._prefs && !this._prefsBusy) { this._prefsBusy = true; this._hass.callWS({ type: 'simkl_hub/prefs' }).then((p) => { this._prefs = p; this._prefsBusy = false; this._render(); }).catch(() => { this._prefs = { kinds: { show: true, anime: true, movie: true }, hidden: [] }; this._prefsBusy = false; }); }
