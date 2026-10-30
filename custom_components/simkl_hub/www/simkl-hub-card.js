@@ -145,7 +145,7 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
       this._render();
       if (!this._players) { try { this._players = await this._hass.callWS({ type: 'simkl_hub/players' }); } catch (e) { this._players = []; } }
       try {
-        const d = await this._hass.callWS({ type: 'simkl_hub/detail', kind: this._sel.kind, id: String(this._sel.id) });
+        const d = await this._hass.callWS({ type: 'simkl_hub/detail', kind: this._sel.kind, simkl_id: String(this._sel.id) });
         const ss = [...new Set(d.eps.map((e) => e.s))].sort((a, b) => a - b);
         if (this._season == null || !ss.includes(this._season)) { this._season = ss.find((x) => x > 0) || ss[0] || 1; if (episode == null) this._ep = null; }
         this._det = d;

@@ -62,7 +62,7 @@ async def ws_state(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
     {
         vol.Required("type"): "simkl_hub/detail",
         vol.Required("kind"): vol.In(["show", "anime", "movie"]),
-        vol.Required("id"): vol.Coerce(str),
+        vol.Required("simkl_id"): vol.Coerce(str),
     }
 )
 @websocket_api.async_response
@@ -71,16 +71,16 @@ async def ws_detail(hass: HomeAssistant, connection: websocket_api.ActiveConnect
     if c is None:
         connection.send_error(msg["id"], "not_connected", "SIMKL is not set up")
         return
-    _LOGGER.debug("detail %s %s", msg["kind"], msg["id"])
+    _LOGGER.debug("detail %s %s", msg["kind"], msg["simkl_id"])
     try:
         async with asyncio.timeout(45):
-            result = await c.async_detail(msg["kind"], msg["id"])
+            result = await c.async_detail(msg["kind"], msg["simkl_id"])
         connection.send_result(msg["id"], result)
     except TimeoutError:
-        _LOGGER.warning("SIMKL detail %s/%s timed out", msg["kind"], msg["id"])
+        _LOGGER.warning("SIMKL detail %s/%s timed out", msg["kind"], msg["simkl_id"])
         connection.send_error(msg["id"], "timeout", "SIMKL did not answer in time")
     except SimklError as err:
-        _LOGGER.warning("SIMKL detail %s/%s failed: %s", msg["kind"], msg["id"], err)
+        _LOGGER.warning("SIMKL detail %s/%s failed: %s", msg["kind"], msg["simkl_id"], err)
         connection.send_error(msg["id"], "simkl_error", str(err))
 
 
