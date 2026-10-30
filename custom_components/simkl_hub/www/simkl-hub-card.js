@@ -104,6 +104,38 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
 .rk{z-index:2;position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:700}
 .it{position:relative}
 .sub2{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+/* phones */
+@media(max-width:700px){
+.wrap{padding:12px;border-radius:14px}
+.hd h2{font-size:19px}
+.tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px 12px;padding:0 12px;-webkit-overflow-scrolling:touch}.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:0 0 auto;white-space:nowrap;padding:8px 14px}
+button{min-height:36px}button.sm{min-height:32px}
+.ctl{gap:6px}.ctl h3{font-size:16px;min-width:0;flex:1 0 100%;order:-1;margin:0 0 2px}
+.ctl .seg{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}.ctl .seg::-webkit-scrollbar{display:none}
+.ctl .seg button{flex:0 0 auto;padding:6px 11px;font-size:12px;white-space:nowrap}
+.grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.it .b{padding:7px 8px 9px}.t{font-size:12px}
+.mg .dow{padding:4px 2px;font-size:10px;text-align:center;letter-spacing:0}
+.day{min-height:52px;padding:3px;gap:2px;align-items:stretch}
+.day .n{width:20px;height:20px;font-size:11px}
+.chip{font-size:0;height:5px;padding:0;border-left-width:0;border-radius:3px;min-height:0}
+.more{font-size:9px;padding:0;text-align:center}
+.panel{max-height:none;padding:10px}
+.row img{width:46px}.row .t{white-space:normal}
+.hero{gap:12px;flex-wrap:nowrap}.hero img{width:96px;flex:0 0 96px}.hero .tx{min-width:0}.hero h3{font-size:19px}
+.ov{font-size:13px}
+.acts>a:not(.lk){flex:1 1 100%}.acts>a:not(.lk) button{width:100%}
+.acts{gap:6px}.acts button:not(.pri),.acts a.lk{flex:1 1 calc(50% - 6px)}
+.rate{gap:6px}.pill{font-size:11px;padding:4px 8px}
+.lk{flex:1 1 calc(50% - 6px);justify-content:center}
+.eps{grid-template-columns:1fr;max-height:260px}
+.cs{padding:10px}.cs .lst{grid-template-columns:1fr;max-height:240px}.cs input[type=search]{min-width:0;flex:1 1 100%}
+.cs .row2{gap:10px}
+.sf input{min-width:0;flex:1 1 100%}
+.stats{grid-template-columns:repeat(2,1fr)}
+.wk .col{min-height:0}
+}
 `;
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const pad = (n) => String(n).padStart(2, '0');
