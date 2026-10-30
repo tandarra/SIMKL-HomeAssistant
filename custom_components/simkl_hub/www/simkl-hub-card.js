@@ -248,7 +248,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
           ? '<div class="trl"><iframe src="https://www.youtube-nocookie.com/embed/' + esc(yt) + '?autoplay=1&rel=0" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div><div class="acts" style="margin:-6px 0 12px"><a class="lk" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=' + esc(yt) + '">▶ Watch on YouTube ↗</a><span class="m">If the player says it cannot play here, use this link.</span></div>'
           : '<div class="m" style="margin:0 0 12px">SIMKL has no trailer for this title. <a target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=' + encodeURIComponent((d.title || it.title || '') + ' ' + (d.year || it.year || '') + ' trailer') + '">Search YouTube ↗</a></div>';
       }
-      return '<div class="rate">' + p.join('') + '</div>' + (!d.rotten && d.imdb ? '<div class="m" style="margin-top:6px;color:var(--dim)">Rotten Tomatoes and Metacritic scores appear here once you add a free OMDb key under SIMKL Hub → Configure → Calendar and sync.</div>' : '') + links + trailer;
+      return '<div class="rate">' + p.join('') + '</div>' + (d.omdb_error ? '<div class="m" style="margin-top:6px;color:var(--dim)">OMDb: ' + esc(d.omdb_error) + '</div>' : (!d.rotten && d.imdb ? '<div class="m" style="margin-top:6px;color:var(--dim)">Rotten Tomatoes and Metacritic scores appear here once you add a free OMDb key under SIMKL Hub → Configure → Calendar and sync.</div>' : '')) + links + trailer;
     }
     _manageRow(d, it, what) {
       const isMovie = it.kind === 'movie';

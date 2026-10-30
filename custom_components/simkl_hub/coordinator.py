@@ -202,19 +202,32 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if e.get("type") in (None, "episode")
             ],
         }
-        key_omdb = self.config_entry.options.get(CONF_OMDB_KEY)
-        if key_omdb and out["imdb"]:
+        key_omdb = (self.config_entry.options.get(CONF_OMDB_KEY) or "").strip()
+        if key_omdb and not out["imdb"]:
+            out["omdb_error"] = "SIMKL has no IMDb id for this title"
+        elif key_omdb:
             try:
                 extra = await self.client.omdb(key_omdb, out["imdb"])
-            except SimklError:
-                extra = {}
+            except SimklError as err:
+                _LOGGER.warning("OMDb lookup for %s failed: %s", out["imdb"], err)
+                extra = {"Error": "invalid key or not activated yet (check your email)" if "401" in str(err) else str(err)}
+            if str(extra.get("Response")).lower() == "false" or extra.get("Error"):
+                out["omdb_error"] = str(extra.get("Error") or "no data")
             for r in extra.get("Ratings") or []:
                 if r.get("Source") == "Rotten Tomatoes":
                     out["rotten"] = r.get("Value")
             if extra.get("Metascore") not in (None, "N/A"):
                 out["metascore"] = extra.get("Metascore")
             if extra.get("imdbRating") not in (None, "N/A"):
-                out["imdb_rating"] = float(extra["imdbRating"])
+                try:
+                    out["imdb_rating"] = float(extra["imdbRating"])
+                except ValueError:
+                    pass
+            if not out.get("rotten") and not out.get("omdb_error"):
+                out["omdb_error"] = "OMDb has no Rotten Tomatoes score for this title"
+            if out.get("omdb_error") and "has no" not in out["omdb_error"]:
+                self._detail_cache[key] = (time.time() - DETAIL_TTL + 60, out)
+                return out
         self._detail_cache[key] = (time.time(), out)
         return out
 
