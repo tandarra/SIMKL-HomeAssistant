@@ -135,8 +135,9 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if await self.client.ensure_token():
                 await self._persist_tokens()
             info, eps = await self.client.detail(kind, str(sid))
-        except SimklAuthError as err:
-            raise ConfigEntryAuthFailed(str(err)) from err
+        except SimklAuthError:
+            self.config_entry.async_start_reauth(self.hass)
+            raise
         ids = info.get("ids") or {}
         rating = ((info.get("ratings") or {}).get("simkl") or {}).get("rating")
         out = {

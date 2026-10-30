@@ -1,6 +1,8 @@
 """WebSocket API used by the SIMKL card."""
 from __future__ import annotations
 
+import asyncio
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -12,6 +14,9 @@ from .api import SimklError
 from .const import CONF_NOTIFY, CONF_PLAYERS, DOMAIN
 from .coordinator import SimklCoordinator
 from .play import async_open, configured_players, discover_players, stremio_link
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _coordinator(hass: HomeAssistant, entry_id: str | None) -> SimklCoordinator | None:
@@ -66,9 +71,16 @@ async def ws_detail(hass: HomeAssistant, connection: websocket_api.ActiveConnect
     if c is None:
         connection.send_error(msg["id"], "not_connected", "SIMKL is not set up")
         return
+    _LOGGER.debug("detail %s %s", msg["kind"], msg["id"])
     try:
-        connection.send_result(msg["id"], await c.async_detail(msg["kind"], msg["id"]))
+        async with asyncio.timeout(45):
+            result = await c.async_detail(msg["kind"], msg["id"])
+        connection.send_result(msg["id"], result)
+    except TimeoutError:
+        _LOGGER.warning("SIMKL detail %s/%s timed out", msg["kind"], msg["id"])
+        connection.send_error(msg["id"], "timeout", "SIMKL did not answer in time")
     except SimklError as err:
+        _LOGGER.warning("SIMKL detail %s/%s failed: %s", msg["kind"], msg["id"], err)
         connection.send_error(msg["id"], "simkl_error", str(err))
 
 
