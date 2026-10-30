@@ -12,7 +12,10 @@ Your [SIMKL](https://simkl.com) lists inside Home Assistant, with a **release ca
 
 - **Calendar** (Month / Week / Agenda) of upcoming episodes, premieres and movie releases, fed by SIMKL's public calendar files.
   Filter: *My list*, *My list + major* (most-followed titles) or *Everything*. Click a day for the full list.
-- **Watching, Up next, Plan to watch, Stats** from your own account. *Up next* is ordered by what you watched most recently.
+- **Up next, Watching, Plan to watch, Stats** from your own account. *Up next* is ordered by what you watched most recently.
+- **Trending** TV, movies and anime (today / this week / this month) and **search** across all of SIMKL.
+- **Ratings and links** on every title: SIMKL and IMDb scores, optional Rotten Tomatoes and Metacritic (free OMDb key), IMDb link and an in-card **trailer**.
+- **Track from Home Assistant**: mark an episode, season, show or movie as watched, or move it between Plan to watch / Watching / On hold / Dropped / Completed.
 - **Show pages**: description, seasons, episodes, episode descriptions. Opens on your next unwatched episode.
 - **Open in Stremio** on the device you are using, or send it to any Android TV / Google TV (Android TV Remote or ADB integration) or to a phone running the Home Assistant Companion app.
 - A **sidebar panel** ("SIMKL") that works straight after setup, plus a `calendar.simkl_*_my_releases` entity and count sensors for automations.
@@ -29,8 +32,8 @@ Your [SIMKL](https://simkl.com) lists inside Home Assistant, with a **release ca
 
 ```yaml
 type: custom:simkl-hub-card
-default_tab: calendar        # calendar | watching | upnext | plan | stats
-players:                     # optional; otherwise Android TV and phone targets are discovered
+default_tab: calendar        # calendar | upnext | watching | plan | trending | search | stats
+players:                     # optional; overrides the players chosen under Configure
   - name: Living room
     entity: remote.living_room_tv
   - name: Lounge
@@ -74,7 +77,13 @@ Stremio opens the title page for that episode, so you pick the stream from there
 Settings → Devices & services → SIMKL Hub → Configure:
 
 - **Calendar and sync**: how many popular TV/anime titles and movies to add to the "major" calendar filter per month, and the sync interval (default 20 min).
-- **Players**: pick the TVs / media players and phones that appear as "send to" buttons. Leave empty to detect them automatically. Add a TV first with the *Android TV Remote* or *Android Debug Bridge* integration; phones need the Companion app.
+- **Players**: tick the TVs / media players and phones that get a "send to" button, then name each one (e.g. *Nvidia Shield Living Room*). Nothing is detected automatically, so only the devices you choose appear. Add a TV first with the *Android TV Remote* or *Android Debug Bridge* integration; phones need the Companion app.
+- **OMDb API key** (optional, under *Calendar and sync*): adds Rotten Tomatoes and Metacritic scores. Get a free key at <https://www.omdbapi.com/apikey.aspx>.
+
+## Notes on writing to SIMKL
+
+Marking things watched and moving titles between lists needs the **write** permission. Accounts connected with an earlier version only have read access: Home Assistant will show a *Reconnect* prompt; approve the new code once. Writing is limited to Home Assistant administrators.
+SIMKL's API does not (yet) allow creating custom lists, so list changes use SIMKL's own lists (Plan to watch, Watching, On hold, Dropped, Completed).
 
 ## Notes on SIMKL limits
 

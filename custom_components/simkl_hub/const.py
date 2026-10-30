@@ -9,6 +9,8 @@ USER_AGENT = f"{APP_NAME}/{VERSION}"
 
 API_BASE = "https://api.simkl.com"
 CDN_BASE = "https://data.simkl.in/calendar/v2"
+TREND_BASE = "https://data.simkl.in/discover/trending"
+OMDB_URL = "https://www.omdbapi.com/"
 POSTER_BASE = "https://simkl.in/posters"
 DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 
@@ -22,12 +24,14 @@ CONF_POPULAR_MOVIES = "popular_movies"
 CONF_SCAN_MINUTES = "scan_minutes"
 CONF_PLAYERS = "players"
 CONF_NOTIFY = "notify_targets"
+CONF_OMDB_KEY = "omdb_api_key"
 DEFAULT_POPULAR_TV = 40
 DEFAULT_POPULAR_MOVIES = 60
 DEFAULT_SCAN_MINUTES = 20
 
 CALENDAR_TTL = 5 * 3600
 DETAIL_TTL = 12 * 3600
+TREND_TTL = 3600
 
 PANEL_URL = "simkl"
 CARD_URL = f"/{DOMAIN}/simkl-hub-card.js"

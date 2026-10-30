@@ -2,7 +2,7 @@
  * SIMKL Hub card + sidebar panel (no dependencies).
  * Served by the simkl_hub integration; loaded automatically on all dashboards.
  *   type: custom:simkl-hub-card
- *   optional: default_tab: calendar|watching|upnext|plan|stats
+ *   optional: default_tab: calendar|upnext|watching|plan|trending|search|stats
  *             players: [{ name: "Living room", entity: remote.living_room_tv }]
  */
 (() => {
@@ -73,6 +73,24 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
 .epd{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px;line-height:1.5}
 .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.acts a{text-decoration:none}
 .toast{font-size:12px;color:var(--ok);margin-left:6px}.toast.bad{color:var(--warn)}
+.rate{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-flex;gap:6px;align-items:baseline;font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--text);text-decoration:none}
+.pill b{font-weight:600;color:var(--mute);font-size:11px;letter-spacing:.03em}.pill small{color:var(--dim)}
+.pill.rt{background:rgba(250,50,10,.16);border-color:rgba(250,90,50,.4)}.pill.rt b{color:#ffb4a0}
+a.pill:hover{border-color:var(--accent)}
+.lk{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:7px 13px;font-size:13px}
+.lk:hover{border-color:var(--accent)}
+.trl{position:relative;width:100%;max-width:720px;aspect-ratio:16/9;margin:4px 0 14px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#000}
+.trl iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.sec{margin:16px 0 6px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+button.on{color:#fff;background:rgba(255,77,109,.25);border-color:var(--accent)}
+button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-weight:600}
+.sf{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.sf input{flex:1;min-width:200px;font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 14px}
+.sf input:focus{outline:none;border-color:var(--accent)}
+.rk{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:700}
+.it{position:relative}
+.sub2{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
 `;
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const pad = (n) => String(n).padStart(2, '0');
@@ -94,6 +112,7 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
       this._tab = null; this._st = null; this._sel = null; this._det = null; this._season = null; this._ep = null;
       this._view = 'month'; this._scope = 'major'; this._cursor = new Date(); this._cursor.setDate(1); this._day = dkey(new Date());
       this._cal = {}; this._loading = {}; this._players = null; this._toast = ''; this._toastBad = false; this._wk = null;
+      this._pool = {}; this._tr = { kind: 'show', period: 'today', data: {} }; this._q = ''; this._sk = 'all'; this._sr = null; this._serr = ''; this._sbusy = false; this._trailer = false; this._cf = null;
     }
     setConfig(c) { this._cfg = c || {}; if (!this._tab) this._tab = this._cfg.default_tab || 'watching'; this._render(); }
     getCardSize() { return 12; }
@@ -140,7 +159,7 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
     /* ---------- detail ---------- */
     async _open(it, season, episode) {
       this._sel = { kind: it.kind || it.k, id: it.id, title: it.title, poster: it.poster, year: it.year, next: it.next };
-      this._det = null; this._ep = episode != null ? episode : (it.next && it.next.episode != null ? it.next.episode : null);
+      this._det = null; this._trailer = false; this._cf = null; this._ep = episode != null ? episode : (it.next && it.next.episode != null ? it.next.episode : null);
       this._season = season != null ? season : (it.next && it.next.season ? it.next.season : null); this._toast = '';
       this._render();
       if (!this._players) { try { this._players = await this._hass.callWS({ type: 'simkl_hub/players' }); } catch (e) { this._players = []; } }
@@ -179,6 +198,7 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
       const nx = it.next || {};
       const sub = [d.year || it.year, (d.genres || []).slice(0, 3).join(', '), d.network, d.runtime ? d.runtime + ' min' : '', d.rating ? '★ ' + d.rating : ''].filter(Boolean).map(esc).join(' · ');
       let h = '<div class="hero"><img src="' + poster(d.poster || it.poster) + '" alt=""><div class="tx"><h3>' + esc(d.title || it.title) + '</h3><div class="m">' + sub + '</div><div class="ov">' + esc(d.overview || (d.error ? 'Could not load details from SIMKL.' : 'No description.')) + '</div></div></div>';
+      h += this._ratingsRow(d, it);
       if (seasons.length) {
         h += '<div class="chips">' + seasons.map((s) => '<button data-s="' + s + '" class="' + (s === this._season ? 'on' : '') + '">' + (s === 0 ? 'Specials' : 'Season ' + s) + '</button>').join('') + '</div>';
         h += '<div class="eps">' + cur.map((e) => { const isNx = nx.season === e.s && nx.episode === e.e; return '<button class="ep ' + (e.e === this._ep ? 'on' : '') + (isNx ? ' nx2' : '') + '" data-e="' + e.e + '"><b>' + e.e + '</b><span>' + esc(e.t || 'Episode ' + e.e) + '</span><i>' + fmtDate(e.a) + (isNx ? ' · up next' : '') + '</i></button>'; }).join('') + '</div>';
@@ -187,8 +207,97 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
       const what = this._ep != null ? 'S' + this._season + 'E' + this._ep : (it.kind === 'movie' ? 'movie' : 'series');
       const pl = this._playerList();
       h += '<div class="acts"><a href="' + esc(this._link()) + '"><button class="pri">Open in Stremio here (' + what + ')</button></a>' + pl.map((p, i) => '<button data-p="' + i + '">' + esc(p.name) + '</button>').join('') + (this._toast ? '<span class="toast ' + (this._toastBad ? 'bad' : '') + '">' + esc(this._toast) + '</span>' : '') + '</div>';
-      if (!pl.length) h += '<div class="m" style="margin-top:10px;line-height:1.5">No TVs or phones found to send this to. To add a TV, go to <b>Settings → Devices &amp; services → Add integration</b> and choose <b>Android TV Remote</b> (Shield, Google TV, Chromecast with Google TV) or <b>Android Debug Bridge</b> (Fire TV). For a phone, install the Home Assistant Companion app. Then pick them under <b>SIMKL Hub → Configure → Players</b>.</div>';
-      return h;
+      if (!pl.length) h += '<div class="m" style="margin-top:10px;line-height:1.5">No players added yet. Go to <b>Settings → Devices &amp; services → SIMKL Hub → Configure → Players</b>, tick your TVs or phones and name them (for example <i>Nvidia Shield Living Room</i>). Add a TV first with the <b>Android TV Remote</b> or <b>Android Debug Bridge</b> integration.</div>';
+      return h + this._manageRow(d, it, what);
+    }
+
+    _ratingsRow(d, it) {
+      const imdb = d.imdb ? 'https://www.imdb.com/title/' + d.imdb + '/' : '';
+      const votes = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'K' : String(n || ''));
+      const p = [];
+      if (d.rating) p.push('<span class="pill"><b>SIMKL</b> ★ ' + esc(d.rating) + '</span>');
+      if (d.imdb_rating) p.push((imdb ? '<a class="pill" target="_blank" rel="noopener" href="' + imdb + '">' : '<span class="pill">') + '<b>IMDb</b> ★ ' + esc(d.imdb_rating) + (d.imdb_votes ? ' <small>' + votes(d.imdb_votes) + '</small>' : '') + (imdb ? '</a>' : '</span>'));
+      if (d.rotten) p.push('<span class="pill rt"><b>Rotten Tomatoes</b> ' + esc(d.rotten) + '</span>');
+      if (d.metascore) p.push('<span class="pill"><b>Metacritic</b> ' + esc(d.metascore) + '</span>');
+      if (d.certification) p.push('<span class="pill"><b>Rated</b> ' + esc(d.certification) + '</span>');
+      if (d.total_episodes && it.kind !== 'movie') p.push('<span class="pill"><b>Episodes</b> ' + esc(d.total_episodes) + '</span>');
+      const yt = (d.trailers || [])[0];
+      const links = '<div class="acts" style="margin:10px 0 12px">' +
+        '<button data-trl="1" class="' + (this._trailer ? 'on' : '') + '">▶ Trailer</button>' +
+        (imdb ? '<a class="lk" target="_blank" rel="noopener" href="' + imdb + '">IMDb ↗</a>' : '') +
+        (d.imdb ? '<a class="lk" target="_blank" rel="noopener" href="https://www.rottentomatoes.com/search?search=' + encodeURIComponent(d.title || it.title || '') + '">Rotten Tomatoes ↗</a>' : '') +
+        '<a class="lk" target="_blank" rel="noopener" href="https://simkl.com/' + (it.kind === 'movie' ? 'movies' : it.kind === 'anime' ? 'anime' : 'tv') + '/' + esc(it.id) + '/">SIMKL ↗</a></div>';
+      let trailer = '';
+      if (this._trailer) {
+        trailer = yt
+          ? '<div class="trl"><iframe src="https://www.youtube-nocookie.com/embed/' + esc(yt) + '?autoplay=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div><div class="m" style="margin:-6px 0 12px"><a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=' + esc(yt) + '">Open on YouTube ↗</a></div>'
+          : '<div class="m" style="margin:0 0 12px">SIMKL has no trailer for this title. <a target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=' + encodeURIComponent((d.title || it.title || '') + ' ' + (d.year || it.year || '') + ' trailer') + '">Search YouTube ↗</a></div>';
+      }
+      return '<div class="rate">' + p.join('') + '</div>' + (!d.rotten && d.imdb ? '<div class="m" style="margin-top:6px;color:var(--dim)">Rotten Tomatoes and Metacritic scores appear here once you add a free OMDb key under SIMKL Hub → Configure → Calendar and sync.</div>' : '') + links + trailer;
+    }
+    _manageRow(d, it, what) {
+      const isMovie = it.kind === 'movie';
+      const cur = d.list;
+      const lists = isMovie ? [['plantowatch', 'Plan to watch']] : [['plantowatch', 'Plan to watch'], ['watching', 'Watching'], ['hold', 'On hold'], ['dropped', 'Dropped'], ['completed', 'Completed']];
+      const cf = (k, label) => '<button data-mk="' + k + '" class="' + (this._cf === k ? 'cf' : '') + '">' + (this._cf === k ? 'Tap again to confirm' : label) + '</button>';
+      let h = '<div class="sec">Your list</div><div class="acts">' + lists.map(([k, l]) => '<button data-ls="' + k + '" class="' + (cur === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
+      h += '<div class="sec">Mark as watched</div><div class="acts">';
+      if (isMovie) h += '<button data-mk="movie">✓ Watched</button><button data-mk="unmovie">Not watched</button>';
+      else {
+        if (this._ep != null) h += '<button data-mk="ep">✓ ' + esc(what) + ' watched</button><button data-mk="unep">Unmark ' + esc(what) + '</button>';
+        if (this._season != null && this._season > 0) h += cf('season', '✓ Season ' + this._season + ' watched');
+        h += cf('all', '✓ Whole show watched');
+      }
+      return h + '</div>';
+    }
+    async _call(msg, okText) {
+      try { await this._hass.callWS(msg); this._toast = okText; this._toastBad = false; }
+      catch (e) { this._toast = (e && (e.message || e.code)) || 'Failed'; this._toastBad = true; }
+      this._cf = null; this._render(); setTimeout(() => { this._toast = ''; this._render(); }, 6000);
+      this._loadState(); try { const d = await this._hass.callWS({ type: 'simkl_hub/detail', kind: this._sel.kind, simkl_id: String(this._sel.id) }); this._det = d; this._render(); } catch (e) { /* keep old */ }
+    }
+    _mark(k) {
+      const s = this._sel, base = { type: 'simkl_hub/mark', kind: s.kind, simkl_id: String(s.id) };
+      if ((k === 'season' || k === 'all') && this._cf !== k) { this._cf = k; this._render(); clearTimeout(this._cft); this._cft = setTimeout(() => { this._cf = null; this._render(); }, 4000); return; }
+      if (k === 'movie') return this._call(base, 'Marked as watched');
+      if (k === 'unmovie') return this._call({ ...base, watched: false }, 'Marked as not watched');
+      if (k === 'ep') return this._call({ ...base, season: this._season, episode: this._ep }, 'Marked S' + this._season + 'E' + this._ep + ' watched');
+      if (k === 'unep') return this._call({ ...base, season: this._season, episode: this._ep, watched: false }, 'Unmarked S' + this._season + 'E' + this._ep);
+      if (k === 'season') return this._call({ ...base, season: this._season }, 'Season ' + this._season + ' marked watched');
+      if (k === 'all') return this._call(base, 'Whole show marked watched');
+    }
+    _setList(to) { const s = this._sel; return this._call({ type: 'simkl_hub/set_list', kind: s.kind, simkl_id: String(s.id), to }, 'Moved to ' + to.replace('plantowatch', 'Plan to watch').replace('hold', 'On hold')); }
+
+    /* ---------- search / trending ---------- */
+    _store(list) { (list || []).forEach((x) => { this._pool[x.kind + '|' + x.id] = x; }); return list; }
+    async _loadTrending() {
+      const t = this._tr, key = t.kind + '|' + t.period; if (t.data[key] || t.busy === key) return; t.busy = key;
+      try { t.data[key] = this._store(await this._hass.callWS({ type: 'simkl_hub/trending', kind: t.kind, period: t.period })); t.err = ''; }
+      catch (e) { t.err = (e && (e.message || e.code)) || 'Could not load trending'; t.data[key] = []; }
+      t.busy = null; this._render();
+    }
+    async _search() {
+      const q = this._q.trim(); if (q.length < 2) return; this._sbusy = true; this._render();
+      try { this._sr = this._store(await this._hass.callWS({ type: 'simkl_hub/search', q, kind: this._sk })); this._serr = ''; }
+      catch (e) { this._sr = []; this._serr = (e && (e.message || e.code)) || 'Search failed'; }
+      this._sbusy = false; this._render();
+    }
+    _trendingView(card) {
+      const t = this._tr, key = t.kind + '|' + t.period; this._loadTrending();
+      const seg = (attr, cur, opts) => '<div class="seg">' + opts.map(([k, l]) => '<button ' + attr + '="' + k + '" class="' + (cur === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
+      const ctl = '<div class="sub2">' + seg('data-trk', t.kind, [['show', 'TV series'], ['movie', 'Movies'], ['anime', 'Anime']]) + seg('data-trp', t.period, [['today', 'Today'], ['week', 'This week'], ['month', 'This month']]) + '</div>';
+      const list = t.data[key];
+      if (!list) return ctl + '<div class="empty">Loading trending…</div>';
+      if (!list.length) return ctl + '<div class="empty">' + esc(t.err || 'Nothing trending right now.') + '</div>';
+      return ctl + '<div class="grid">' + list.map((x) => card(x, x.rating ? '<div class="m">★ ' + esc(x.rating) + '</div>' : '', '<span class="rk">#' + x.rank + '</span>')).join('') + '</div>';
+    }
+    _searchView(card) {
+      const seg = '<div class="seg">' + [['all', 'All'], ['show', 'TV series'], ['movie', 'Movies'], ['anime', 'Anime']].map(([k, l]) => '<button data-sk="' + k + '" class="' + (this._sk === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
+      const form = '<form class="sf" data-sf="1"><input type="search" placeholder="Search shows, movies and anime…" value="' + esc(this._q) + '" autocomplete="off"><button class="pri" type="submit">' + (this._sbusy ? 'Searching…' : 'Search') + '</button></form>';
+      let res = '';
+      if (this._sr) res = this._sr.length ? '<div class="grid">' + this._sr.map((x) => card(x, x.rating ? '<div class="m">★ ' + esc(x.rating) + '</div>' : '')).join('') + '</div>' : '<div class="empty">' + esc(this._serr || 'No matches.') + '</div>';
+      else res = '<div class="empty">Type a title and press Enter.</div>';
+      return form + '<div class="sub2">' + seg + '</div>' + res;
     }
 
     /* ---------- calendar ---------- */
@@ -244,16 +353,18 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
       else if (this._sel) body = '<div class="tabs"><button data-back="1">← Back</button></div>' + this._detailView();
       else {
         const w = st.watching || [], p = st.plan || [], c = st.completed || {};
-        const card = (x, extra) => '<div class="it" data-k="' + esc(x.kind + '|' + x.id) + '"><img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="b"><div class="t">' + esc(x.title) + '</div><div class="m">' + esc(x.year || '') + ' · ' + esc(x.kind) + '</div>' + (extra || '') + '</div></div>';
+        const card = (x, extra, badge) => '<div class="it" data-k="' + esc(x.kind + '|' + x.id) + '">' + (badge || '') + '<img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="b"><div class="t">' + esc(x.title) + '</div><div class="m">' + esc(x.year || '') + ' · ' + esc(x.kind) + '</div>' + (extra || '') + '</div></div>';
         const prog = (x) => { if (!x.total) return ''; const pc = Math.min(100, Math.round((x.watched || 0) / x.total * 100)); return '<div class="bar"><i style="width:' + pc + '%"></i></div><div class="m">' + (x.watched || 0) + '/' + x.total + ' eps</div>'; };
         const nxt = (x) => (x.next && x.next.episode != null ? '<div class="nx">Next: S' + (x.next.season || 1) + 'E' + x.next.episode + (x.next.date ? ' · ' + fmtDate(x.next.date) : '') + '</div>' : '');
         let inner;
         if (this._tab === 'calendar') inner = this._calendarView();
         else if (this._tab === 'upnext') { const u = w.filter((x) => x.next && x.next.episode != null).sort((a, b) => new Date(b.last || 0) - new Date(a.last || 0)); inner = u.length ? '<div class="grid">' + u.map((x) => card(x, nxt(x) + (x.next.date && new Date(x.next.date) > Date.now() ? '<div class="m">Not aired yet</div>' : '<div class="m">Ready to watch</div>'))).join('') + '</div>' : '<div class="empty">No episodes waiting.</div>'; }
+        else if (this._tab === 'trending') inner = this._trendingView(card);
+        else if (this._tab === 'search') inner = this._searchView(card);
         else if (this._tab === 'plan') inner = p.length ? '<div class="grid">' + p.map((x) => card(x)).join('') + '</div>' : '<div class="empty">Plan to watch is empty.</div>';
         else if (this._tab === 'stats') inner = '<div class="stats"><div class="st"><b>' + w.length + '</b><span>Watching</span></div><div class="st"><b>' + p.length + '</b><span>Plan to watch</span></div><div class="st"><b>' + (c.shows || 0) + '</b><span>Shows completed</span></div><div class="st"><b>' + (c.anime || 0) + '</b><span>Anime completed</span></div><div class="st"><b>' + (c.movies || 0) + '</b><span>Movies watched</span></div></div>';
         else inner = w.length ? '<div class="grid">' + w.map((x) => card(x, prog(x) + nxt(x))).join('') + '</div>' : '<div class="empty">Nothing in Watching.</div>';
-        body = '<div class="tabs">' + [['calendar', 'Calendar'], ['upnext', 'Up next'], ['watching', 'Watching'], ['plan', 'Plan to watch'], ['stats', 'Stats']].map(([k, l]) => '<button data-t="' + k + '" class="' + (this._tab === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' + inner;
+        body = '<div class="tabs">' + [['calendar', 'Calendar'], ['upnext', 'Up next'], ['watching', 'Watching'], ['plan', 'Plan to watch'], ['trending', 'Trending'], ['search', 'Search'], ['stats', 'Stats']].map(([k, l]) => '<button data-t="' + k + '" class="' + (this._tab === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' + inner;
       }
       const upd = st && st.updated ? 'Updated ' + ago(st.updated) : '';
       root.innerHTML = '<style>' + CSS + '</style><div class="wrap"><div class="hd"><h2>SIMKL</h2><span class="sub">' + upd + '</span><span class="sp"></span>' + (st && st.connected ? '<button class="sm" data-a="sync">Sync now</button>' : '') + '</div>' + body + (st && st.connected && st.ok === false ? '<div class="err">Last sync failed; showing earlier data.</div>' : '') + '</div>';
@@ -262,11 +373,18 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
     _wire(root) {
       const on = (sel, fn) => root.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => fn(b)));
       const all = () => [...((this._st && this._st.watching) || []), ...((this._st && this._st.plan) || [])];
-      on('[data-t]', (b) => { this._tab = b.dataset.t; this._render(); });
-      on('[data-k]', (b) => { const it = all().find((x) => x.kind + '|' + x.id === b.dataset.k); if (it) this._open(it); });
+      on('[data-t]', (b) => { this._tab = b.dataset.t; this._focusSearch = this._tab === 'search'; this._render(); });
+      on('[data-k]', (b) => { const it = all().find((x) => x.kind + '|' + x.id === b.dataset.k) || this._pool[b.dataset.k]; if (it) this._open(it); });
       on('[data-back]', () => { this._sel = null; this._det = null; this._render(); });
       on('[data-s]', (b) => { this._season = Number(b.dataset.s); this._ep = null; this._render(); });
       on('[data-e]', (b) => { this._ep = Number(b.dataset.e); this._render(); });
+      on('[data-trl]', () => { this._trailer = !this._trailer; this._render(); });
+      on('[data-mk]', (b) => this._mark(b.dataset.mk));
+      on('[data-ls]', (b) => this._setList(b.dataset.ls));
+      on('[data-trk]', (b) => { this._tr.kind = b.dataset.trk; this._render(); });
+      on('[data-trp]', (b) => { this._tr.period = b.dataset.trp; this._render(); });
+      on('[data-sk]', (b) => { this._sk = b.dataset.sk; if (this._q.trim().length > 1 && this._sr) this._search(); else this._render(); });
+      root.querySelectorAll('[data-sf]').forEach((f) => { const inp = f.querySelector('input'); inp.addEventListener('input', () => { this._q = inp.value; }); f.addEventListener('submit', (e) => { e.preventDefault(); this._q = inp.value; this._search(); }); if (this._focusSearch) { this._focusSearch = false; inp.focus(); } });
       on('[data-p]', (b) => this._send(this._playerList()[Number(b.dataset.p)]));
       on('[data-v]', (b) => { this._view = b.dataset.v; this._render(); });
       on('[data-sc]', (b) => { this._scope = b.dataset.sc; this._render(); });
@@ -294,5 +412,5 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
   if (!customElements.get('simkl-hub-card')) customElements.define('simkl-hub-card', SimklHubCard);
   if (!customElements.get('simkl-hub-panel')) customElements.define('simkl-hub-panel', SimklHubPanel);
   window.customCards = window.customCards || [];
-  if (!window.customCards.find((c) => c.type === 'simkl-hub-card')) window.customCards.push({ type: 'simkl-hub-card', name: 'SIMKL Hub', description: 'Watching, release calendar, details and open-in-Stremio' });
+  if (!window.customCards.find((c) => c.type === 'simkl-hub-card')) window.customCards.push({ type: 'simkl-hub-card', name: 'SIMKL Hub', description: 'Watchlist, release calendar, trending, search, ratings and open-in-Stremio' });
 })();

@@ -10,10 +10,10 @@ from homeassistant.components import websocket_api
 from homeassistant.auth.permissions.const import POLICY_CONTROL
 from homeassistant.core import HomeAssistant, callback
 
-from .api import SimklError
+from .api import SimklError, SimklPermission
 from .const import CONF_NOTIFY, CONF_PLAYERS, DOMAIN
 from .coordinator import SimklCoordinator
-from .play import async_open, configured_players, discover_players, stremio_link
+from .play import async_open, configured_players, stremio_link
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,6 +34,10 @@ def async_register(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_refresh)
     websocket_api.async_register_command(hass, ws_players)
     websocket_api.async_register_command(hass, ws_open)
+    websocket_api.async_register_command(hass, ws_search)
+    websocket_api.async_register_command(hass, ws_trending)
+    websocket_api.async_register_command(hass, ws_mark)
+    websocket_api.async_register_command(hass, ws_set_list)
 
 
 @websocket_api.websocket_command({vol.Required("type"): "simkl_hub/state"})
@@ -115,14 +119,112 @@ async def ws_refresh(hass: HomeAssistant, connection: websocket_api.ActiveConnec
 @websocket_api.websocket_command({vol.Required("type"): "simkl_hub/players"})
 @callback
 def ws_players(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Only devices the user picked in Configure. Nothing is auto-discovered."""
     c = _coordinator(hass, None)
-    if c is not None:
-        chosen = c.config_entry.options.get(CONF_PLAYERS) or []
-        phones = c.config_entry.options.get(CONF_NOTIFY) or []
-        if chosen or phones:
-            connection.send_result(msg["id"], configured_players(hass, chosen, phones))
-            return
-    connection.send_result(msg["id"], discover_players(hass))
+    if c is None:
+        connection.send_result(msg["id"], [])
+        return
+    chosen = c.config_entry.options.get(CONF_PLAYERS) or []
+    phones = c.config_entry.options.get(CONF_NOTIFY) or []
+    connection.send_result(msg["id"], configured_players(hass, chosen, phones))
+
+
+_FAILED = object()
+
+
+async def _guarded(connection: websocket_api.ActiveConnection, msg: dict[str, Any], coro: Any) -> Any:
+    try:
+        async with asyncio.timeout(45):
+            return await coro
+    except SimklPermission:
+        connection.send_error(
+            msg["id"], "needs_reconnect",
+            "SIMKL needs write permission. Open Settings > Devices & services > SIMKL Hub and reconnect.",
+        )
+    except TimeoutError:
+        connection.send_error(msg["id"], "timeout", "SIMKL did not answer in time")
+    except SimklError as err:
+        connection.send_error(msg["id"], "simkl_error", str(err))
+    return _FAILED
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "simkl_hub/search",
+        vol.Required("q"): vol.All(str, vol.Length(min=2, max=80)),
+        vol.Optional("kind", default="all"): vol.In(["all", "show", "anime", "movie"]),
+    }
+)
+@websocket_api.async_response
+async def ws_search(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    c = _coordinator(hass, None)
+    if c is None:
+        connection.send_error(msg["id"], "not_connected", "SIMKL is not set up")
+        return
+    res = await _guarded(connection, msg, c.async_search(msg["q"].strip(), msg["kind"]))
+    if res is not _FAILED:
+        connection.send_result(msg["id"], res)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "simkl_hub/trending",
+        vol.Required("kind"): vol.In(["show", "anime", "movie"]),
+        vol.Optional("period", default="today"): vol.In(["today", "week", "month"]),
+    }
+)
+@websocket_api.async_response
+async def ws_trending(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    c = _coordinator(hass, None)
+    if c is None:
+        connection.send_error(msg["id"], "not_connected", "SIMKL is not set up")
+        return
+    res = await _guarded(connection, msg, c.async_trending(msg["kind"], msg["period"]))
+    if res is not _FAILED:
+        connection.send_result(msg["id"], res)
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "simkl_hub/mark",
+        vol.Required("kind"): vol.In(["show", "anime", "movie"]),
+        vol.Required("simkl_id"): vol.Coerce(str),
+        vol.Optional("season"): vol.Any(None, int),
+        vol.Optional("episode"): vol.Any(None, int),
+        vol.Optional("watched", default=True): bool,
+    }
+)
+@websocket_api.async_response
+async def ws_mark(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    c = _coordinator(hass, None)
+    if c is None:
+        connection.send_error(msg["id"], "not_connected", "SIMKL is not set up")
+        return
+    coro = c.async_mark(
+        msg["kind"], msg["simkl_id"], season=msg.get("season"), episode=msg.get("episode"), watched=msg["watched"]
+    )
+    if await _guarded(connection, msg, coro) is not _FAILED:
+        connection.send_result(msg["id"], {"ok": True})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "simkl_hub/set_list",
+        vol.Required("kind"): vol.In(["show", "anime", "movie"]),
+        vol.Required("simkl_id"): vol.Coerce(str),
+        vol.Required("to"): vol.In(["plantowatch", "watching", "completed", "hold", "dropped"]),
+    }
+)
+@websocket_api.async_response
+async def ws_set_list(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    c = _coordinator(hass, None)
+    if c is None:
+        connection.send_error(msg["id"], "not_connected", "SIMKL is not set up")
+        return
+    if await _guarded(connection, msg, c.async_set_list(msg["kind"], msg["simkl_id"], msg["to"])) is not _FAILED:
+        connection.send_result(msg["id"], {"ok": True})
 
 
 @websocket_api.websocket_command(
