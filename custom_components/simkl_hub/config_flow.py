@@ -161,7 +161,12 @@ class SimklOptionsFlow(OptionsFlow):
     """Calendar/sync tuning and the list of devices that can open Stremio."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return self.async_show_menu(step_id="init", menu_options=["settings", "players"])
+        return self.async_show_menu(step_id="init", menu_options=["settings", "players", "reconnect"])
+
+    async def async_step_reconnect(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Re-run the PIN sign-in (needed once to grant write access)."""
+        self.config_entry.async_start_reauth(self.hass)
+        return self.async_abort(reason="reconnect_started")
 
     async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:

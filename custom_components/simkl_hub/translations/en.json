@@ -32,7 +32,8 @@
         "title": "SIMKL Hub options",
         "menu_options": {
           "settings": "Calendar and sync",
-          "players": "Players (where Stremio can open)"
+          "players": "Players (where Stremio can open)",
+          "reconnect": "Reconnect SIMKL (grants permission to mark watched)"
         }
       },
       "settings": {
@@ -59,6 +60,9 @@
         "title": "Name your players",
         "description": "This is the label shown on each button, for example Nvidia Shield Living Room."
       }
+    },
+    "abort": {
+      "reconnect_started": "Open Settings > Devices & services. A 'Reconnect' prompt for SIMKL Hub is waiting; approve the code on simkl.com."
     }
   },
   "services": {
