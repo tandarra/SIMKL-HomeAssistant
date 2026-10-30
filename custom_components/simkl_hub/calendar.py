@@ -1,4 +1,4 @@
-"""HA calendar entity: releases from your own SIMKL list."""
+"""HA calendar entity: releases for titles you are actively following (plan to watch, or watched in the last 90 days)."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -49,7 +49,7 @@ class SimklCalendar(CalendarEntity):
             cur = (cur + timedelta(days=32)).replace(day=1)
         out: list[CalendarEvent] = []
         for y, m in sorted(months):
-            for it in await self._coord.async_calendar(y, m, "mine"):
+            for it in await self._coord.async_calendar(y, m, "alerts"):
                 start = dt_util.parse_datetime(it["date"] or "")
                 if start is None or not (start_date <= start < end_date):
                     continue

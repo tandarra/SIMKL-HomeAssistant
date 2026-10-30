@@ -10,6 +10,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import SimklAuthError, SimklClient, SimklError, SimklPermission
@@ -313,6 +314,20 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 mine[(it["kind"], int(it["id"]))] = it["status"]
         return mine
 
+    def _active(self) -> set[tuple[str, int]]:
+        """Plan-to-watch titles plus shows watched in the last 90 days (for alerts)."""
+        cutoff = dt_util.utcnow() - timedelta(days=90)
+        out: set[tuple[str, int]] = set()
+        d = self.data or {}
+        for it in d.get("plan", []):
+            if it.get("id"):
+                out.add((it["kind"], int(it["id"])))
+        for it in d.get("watching", []):
+            last = dt_util.parse_datetime(it.get("last") or "") if it.get("last") else None
+            if it.get("id") and last is not None and last >= cutoff:
+                out.add((it["kind"], int(it["id"])))
+        return out
+
     async def _month_file(self, year: int, month: int, kind: str) -> dict[str, Any]:
         key = (year, month, kind)
         hit = self._cal_cache.get(key)
@@ -352,6 +367,7 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         top_tv = int(opts.get(CONF_POPULAR_TV, DEFAULT_POPULAR_TV))
         top_mv = int(opts.get(CONF_POPULAR_MOVIES, DEFAULT_POPULAR_MOVIES))
         mine = self._mine()
+        active = self._active() if scope == "alerts" else set()
         results: list[dict[str, Any]] = []
         for file_kind, kind in (("tv", "show"), ("anime", "anime"), ("movie_release", "movie")):
             data = await self._month_file(year, month, file_kind)
@@ -371,6 +387,8 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 is_mine = (kind, int(sid)) in mine
                 is_pop = str(sid) in popular and m.get("pop", 0) > 0
                 if scope == "mine" and not is_mine:
+                    continue
+                if scope == "alerts" and (kind, int(sid)) not in active:
                     continue
                 if scope == "major" and not (is_mine or is_pop):
                     continue
