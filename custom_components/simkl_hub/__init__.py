@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import hashlib
 from pathlib import Path
 
 import voluptuous as vol
@@ -57,7 +58,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         [StaticPathConfig(f"/{DOMAIN}", str(www), cache_headers=False)]
     )
     # Load the card on every dashboard automatically, no manual resource needed.
-    frontend.add_extra_js_url(hass, f"{CARD_URL}?v={VERSION}")
+    # Cache-bust by content hash so proxies/CDNs and the phone app never serve a stale card.
+    digest = await hass.async_add_executor_job(
+        lambda: hashlib.md5((www / "simkl-hub-card.js").read_bytes()).hexdigest()[:10]
+    )
+    frontend.add_extra_js_url(hass, f"{CARD_URL}?v={VERSION}-{digest}")
 
     async def _open(call: ServiceCall) -> None:
         d = call.data
@@ -82,6 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data.get(CONF_EXPIRES_AT, 0),
     )
     coordinator = SimklCoordinator(hass, entry, client)
+    await coordinator.async_load_prefs()
     await coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN][entry.entry_id] = coordinator
 

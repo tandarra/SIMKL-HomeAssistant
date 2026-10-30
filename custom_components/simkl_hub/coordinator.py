@@ -10,6 +10,8 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import SimklAuthError, SimklClient, SimklError, SimklPermission
@@ -94,6 +96,8 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._cal_cache: dict[tuple[int, int, str], tuple[float, dict[str, Any]]] = {}
         self._detail_cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
         self._cal_lock = asyncio.Lock()
+        self._store = Store[dict[str, Any]](hass, 1, f"{DOMAIN}_{entry.entry_id}_prefs")
+        self.prefs: dict[str, Any] = {"kinds": {"show": True, "anime": True, "movie": True}, "hidden": []}
 
     # ------------------------------------------------------------------ sync
     async def _persist_tokens(self) -> None:
@@ -198,19 +202,32 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if e.get("type") in (None, "episode")
             ],
         }
-        key_omdb = self.config_entry.options.get(CONF_OMDB_KEY)
-        if key_omdb and out["imdb"]:
+        key_omdb = (self.config_entry.options.get(CONF_OMDB_KEY) or "").strip()
+        if key_omdb and not out["imdb"]:
+            out["omdb_error"] = "SIMKL has no IMDb id for this title"
+        elif key_omdb:
             try:
                 extra = await self.client.omdb(key_omdb, out["imdb"])
-            except SimklError:
-                extra = {}
+            except SimklError as err:
+                _LOGGER.warning("OMDb lookup for %s failed: %s", out["imdb"], err)
+                extra = {"Error": "invalid key or not activated yet (check your email)" if "401" in str(err) else str(err)}
+            if str(extra.get("Response")).lower() == "false" or extra.get("Error"):
+                out["omdb_error"] = str(extra.get("Error") or "no data")
             for r in extra.get("Ratings") or []:
                 if r.get("Source") == "Rotten Tomatoes":
                     out["rotten"] = r.get("Value")
             if extra.get("Metascore") not in (None, "N/A"):
                 out["metascore"] = extra.get("Metascore")
             if extra.get("imdbRating") not in (None, "N/A"):
-                out["imdb_rating"] = float(extra["imdbRating"])
+                try:
+                    out["imdb_rating"] = float(extra["imdbRating"])
+                except ValueError:
+                    pass
+            if not out.get("rotten") and not out.get("omdb_error"):
+                out["omdb_error"] = "OMDb has no Rotten Tomatoes score for this title"
+            if out.get("omdb_error") and "has no" not in out["omdb_error"]:
+                self._detail_cache[key] = (time.time() - DETAIL_TTL + 60, out)
+                return out
         self._detail_cache[key] = (time.time(), out)
         return out
 
@@ -305,6 +322,19 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._activity_stamp = None
         await self.async_request_refresh()
 
+    # ----------------------------------------------------------------- prefs
+    async def async_load_prefs(self) -> None:
+        saved = await self._store.async_load()
+        if isinstance(saved, dict):
+            self.prefs["kinds"].update({k: bool(v) for k, v in (saved.get("kinds") or {}).items() if k in self.prefs["kinds"]})
+            self.prefs["hidden"] = [str(x) for x in saved.get("hidden") or []]
+
+    async def async_set_prefs(self, kinds: dict[str, bool], hidden: list[str]) -> dict[str, Any]:
+        self.prefs["kinds"].update({k: bool(v) for k, v in kinds.items() if k in self.prefs["kinds"]})
+        self.prefs["hidden"] = sorted({str(x) for x in hidden})
+        await self._store.async_save(self.prefs)
+        return self.prefs
+
     # -------------------------------------------------------------- calendar
     def _mine(self) -> dict[tuple[str, int], str]:
         mine: dict[tuple[str, int], str] = {}
@@ -312,6 +342,20 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if it.get("id"):
                 mine[(it["kind"], int(it["id"]))] = it["status"]
         return mine
+
+    def _active(self) -> set[tuple[str, int]]:
+        """Plan-to-watch titles plus shows watched in the last 90 days (for alerts)."""
+        cutoff = dt_util.utcnow() - timedelta(days=90)
+        out: set[tuple[str, int]] = set()
+        d = self.data or {}
+        for it in d.get("plan", []):
+            if it.get("id"):
+                out.add((it["kind"], int(it["id"])))
+        for it in d.get("watching", []):
+            last = dt_util.parse_datetime(it.get("last") or "") if it.get("last") else None
+            if it.get("id") and last is not None and last >= cutoff:
+                out.add((it["kind"], int(it["id"])))
+        return out
 
     async def _month_file(self, year: int, month: int, kind: str) -> dict[str, Any]:
         key = (year, month, kind)
@@ -352,8 +396,11 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         top_tv = int(opts.get(CONF_POPULAR_TV, DEFAULT_POPULAR_TV))
         top_mv = int(opts.get(CONF_POPULAR_MOVIES, DEFAULT_POPULAR_MOVIES))
         mine = self._mine()
+        active = self._active() if scope == "alerts" else set()
+        hidden = set(self.prefs["hidden"])
         results: list[dict[str, Any]] = []
         for file_kind, kind in (("tv", "show"), ("anime", "anime"), ("movie_release", "movie")):
+            kind_on = self.prefs["kinds"].get(kind, True)
             data = await self._month_file(year, month, file_kind)
             meta = data["metadata"]
             cal = data["calendar"]
@@ -368,9 +415,15 @@ class SimklCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for c in cal:
                 sid = c.get("simkl_id")
                 m = meta.get(str(sid), {})
+                if f"{kind}|{sid}" in hidden:
+                    continue
                 is_mine = (kind, int(sid)) in mine
+                if not kind_on and not is_mine:
+                    continue  # the type filter only trims popular extras; titles on your list stay
                 is_pop = str(sid) in popular and m.get("pop", 0) > 0
                 if scope == "mine" and not is_mine:
+                    continue
+                if scope == "alerts" and (kind, int(sid)) not in active:
                     continue
                 if scope == "major" and not (is_mine or is_pop):
                     continue

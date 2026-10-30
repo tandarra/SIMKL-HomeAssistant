@@ -91,9 +91,51 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
 .bd{z-index:2;position:absolute;top:8px;right:8px;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;backdrop-filter:blur(4px)}
 .bd.done{background:rgba(16,185,129,.92);color:#04251a}.bd.now{background:rgba(96,165,250,.92);color:#06172e}.bd.plan{background:rgba(245,158,11,.92);color:#2b1a00}
 .it.seen img{opacity:.55}.ep.seen b{color:var(--ok)}.ep.seen span{color:var(--mute)}
+.qm{position:absolute;z-index:3;right:8px;top:44px;width:30px;height:30px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:15px;background:rgba(0,0,0,.7);opacity:0;transition:opacity .12s}
+.it:hover .qm,.it:focus-within .qm{opacity:1}@media(hover:none){.qm{opacity:.9}}.qm:hover{background:var(--ok);border-color:var(--ok);color:#04251a}
+.cog{padding:5px 10px;font-size:15px;line-height:1}
+.cs{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px}
+.cs h4{margin:0;font-size:14px}.cs .row2{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.cs label{display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer}
+.cs input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.cs .lst{max-height:300px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 14px;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.cs .lst label{padding:4px 0;min-width:0}.cs .lst span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs input[type=search]{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 12px;min-width:200px;flex:1}
 .rk{z-index:2;position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:700}
 .it{position:relative}
 .sub2{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+/* phones */
+@media(max-width:700px){
+.wrap{padding:12px;border-radius:14px}
+.hd h2{font-size:19px}
+.tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px 12px;padding:0 12px;-webkit-overflow-scrolling:touch}.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:0 0 auto;white-space:nowrap;padding:8px 14px}
+button{min-height:36px}button.sm{min-height:32px}
+.ctl{gap:6px}.ctl h3{font-size:16px;min-width:0;flex:1 0 100%;order:-1;margin:0 0 2px}
+.ctl .seg{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}.ctl .seg::-webkit-scrollbar{display:none}
+.ctl .seg button{flex:0 0 auto;padding:6px 11px;font-size:12px;white-space:nowrap}
+.grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.it .b{padding:7px 8px 9px}.t{font-size:12px}
+.mg .dow{padding:4px 2px;font-size:10px;text-align:center;letter-spacing:0}
+.day{min-height:52px;padding:3px;gap:2px;align-items:stretch}
+.day .n{width:20px;height:20px;font-size:11px}
+.chip{font-size:0;height:5px;padding:0;border-left-width:0;border-radius:3px;min-height:0}
+.more{font-size:9px;padding:0;text-align:center}
+.panel{max-height:none;padding:10px}
+.row img{width:46px}.row .t{white-space:normal}
+.hero{gap:12px;flex-wrap:nowrap}.hero img{width:96px;flex:0 0 96px}.hero .tx{min-width:0}.hero h3{font-size:19px}
+.ov{font-size:13px}
+.acts>a:not(.lk){flex:1 1 100%}.acts>a:not(.lk) button{width:100%}
+.acts{gap:6px}.acts button:not(.pri),.acts a.lk{flex:1 1 calc(50% - 6px)}
+.rate{gap:6px}.pill{font-size:11px;padding:4px 8px}
+.lk{flex:1 1 calc(50% - 6px);justify-content:center}
+.eps{grid-template-columns:1fr;max-height:260px}
+.cs{padding:10px}.cs .lst{grid-template-columns:1fr;max-height:240px}.cs input[type=search]{min-width:0;flex:1 1 100%}
+.cs .row2{gap:10px}
+.sf input{min-width:0;flex:1 1 100%}
+.stats{grid-template-columns:repeat(2,1fr)}
+.wk .col{min-height:0}
+}
 `;
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const pad = (n) => String(n).padStart(2, '0');
@@ -238,7 +280,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
           ? '<div class="trl"><iframe src="https://www.youtube-nocookie.com/embed/' + esc(yt) + '?autoplay=1&rel=0" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div><div class="acts" style="margin:-6px 0 12px"><a class="lk" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=' + esc(yt) + '">▶ Watch on YouTube ↗</a><span class="m">If the player says it cannot play here, use this link.</span></div>'
           : '<div class="m" style="margin:0 0 12px">SIMKL has no trailer for this title. <a target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=' + encodeURIComponent((d.title || it.title || '') + ' ' + (d.year || it.year || '') + ' trailer') + '">Search YouTube ↗</a></div>';
       }
-      return '<div class="rate">' + p.join('') + '</div>' + (!d.rotten && d.imdb ? '<div class="m" style="margin-top:6px;color:var(--dim)">Rotten Tomatoes and Metacritic scores appear here once you add a free OMDb key under SIMKL Hub → Configure → Calendar and sync.</div>' : '') + links + trailer;
+      return '<div class="rate">' + p.join('') + '</div>' + (d.omdb_error ? '<div class="m" style="margin-top:6px;color:var(--dim)">OMDb: ' + esc(d.omdb_error) + '</div>' : (!d.rotten && d.imdb ? '<div class="m" style="margin-top:6px;color:var(--dim)">Rotten Tomatoes and Metacritic scores appear here once you add a free OMDb key under SIMKL Hub → Configure → Calendar and sync.</div>' : '')) + links + trailer;
     }
     _manageRow(d, it, what) {
       const isMovie = it.kind === 'movie';
@@ -274,6 +316,11 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
     _setList(to) { const s = this._sel; return this._call({ type: 'simkl_hub/set_list', kind: s.kind, simkl_id: String(s.id), to }, 'Moved to ' + to.replace('plantowatch', 'Plan to watch').replace('hold', 'On hold')); }
 
     /* ---------- search / trending ---------- */
+    _flash(msg) {
+      const el = document.createElement('div'); el.textContent = msg;
+      el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99;background:#fbbf24;color:#1b1500;padding:10px 16px;border-radius:12px;font:600 13px system-ui;max-width:90vw';
+      this.shadowRoot.appendChild(el); setTimeout(() => el.remove(), 6000);
+    }
     _status(kind, id) {
       const st = this._st || {}, k = kind + '|' + id;
       if ((st.done || []).includes(k)) return 'done';
@@ -325,9 +372,10 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
     _dayRow(x) {
       const tags = (x.mine ? '<span class="tag mine">' + (x.st === 'watching' ? 'watching' : 'my list') + '</span>' : '') + (this._status(x.k, x.id) === 'done' ? '<span class="tag fin">watched</span>' : '') + (x.fin ? '<span class="tag fin">' + esc(String(x.fin).replace(/_/g, ' ')) + '</span>' : '');
       const sub = x.k === 'movie' ? 'Movie release' : [epLabel(x), x.et].filter(Boolean).map(esc).join(' · ');
-      return '<div class="row" data-ci="' + esc(x.k + '|' + x.id + '|' + (x.s == null ? '' : x.s) + '|' + (x.e == null ? '' : x.e)) + '"><img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="x"><div class="t">' + esc(x.title) + tags + '</div><div class="m">' + sub + '</div><div class="m">' + fmtTime(x.date) + (x.rating ? ' · ★ ' + x.rating : '') + '</div></div></div>';
+      return '<div class="row" data-ci="' + esc(x.k + '|' + x.id + '|' + (x.s == null ? '' : x.s) + '|' + (x.e == null ? '' : x.e)) + '"><img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="x"><div class="t">' + esc(x.title) + tags + '</div><div class="m">' + sub + '</div><div class="m">' + (x.k === 'movie' ? 'Release day' : fmtTime(x.date)) + (x.rating ? ' · ★ ' + x.rating : '') + '</div></div><button class="sm" data-hide="' + esc(x.k + '|' + x.id) + '" title="Hide this title from the calendar" style="align-self:center">Hide</button></div>';
     }
     _calendarView() {
+      if (!this._prefs && !this._prefsBusy) { this._prefsBusy = true; this._hass.callWS({ type: 'simkl_hub/prefs' }).then((p) => { this._prefs = p; this._prefsBusy = false; this._render(); }).catch(() => { this._prefs = { kinds: { show: true, anime: true, movie: true }, hidden: [] }; this._prefsBusy = false; }); }
       this._ensureMonths();
       const map = this._byDay(), today = dkey(new Date());
       const ctl = () => {
@@ -337,7 +385,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
         else label = 'Next 30 days';
         return '<div class="ctl"><button class="sm" data-nav="-1">‹</button><button class="sm" data-nav="0">Today</button><button class="sm" data-nav="1">›</button><h3>' + label + '</h3><span class="sp"></span>' +
           '<div class="seg">' + [['month', 'Month'], ['week', 'Week'], ['agenda', 'Agenda']].map(([k, l]) => '<button data-v="' + k + '" class="' + (this._view === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
-          '<div class="seg">' + [['mine', 'My list'], ['major', 'My list + major'], ['all', 'Everything']].map(([k, l]) => '<button data-sc="' + k + '" class="' + (this._scope === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div></div>';
+          '<div class="seg">' + [['mine', 'My list'], ['major', 'My list + major'], ['all', 'Everything']].map(([k, l]) => '<button data-sc="' + k + '" class="' + (this._scope === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div><div class="seg">' + [['show', 'Series'], ['movie', 'Movies'], ['anime', 'Anime']].map(([k, l]) => '<button data-kf="' + k + '" class="' + (((this._prefs && this._prefs.kinds) || {})[k] !== false ? 'on' : '') + '">' + l + '</button>').join('') + '</div><button class="cog ' + (this._cog ? 'on' : '') + '" data-cog="1" title="Calendar settings">⚙</button></div>' + (this._cog ? this._cogPanel() : '');
       };
       const dayPanel = () => { const a = map[this._day] || []; const d = new Date(this._day + 'T12:00:00'); return '<div class="panel"><h4>' + d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + '</h4>' + (a.length ? a.map((x) => this._dayRow(x)).join('') : '<div class="empty">Nothing scheduled.</div>') + '</div>'; };
       if (this._view === 'month') {
@@ -360,6 +408,23 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       for (let i = 0; i < 30; i++) { const d = new Date(n.getFullYear(), n.getMonth(), n.getDate() + i); const k = dkey(d), a = map[k] || []; if (!a.length) continue; out += '<h5 class="' + (k === today ? 'today' : '') + '">' + (i === 0 ? 'Today · ' : i === 1 ? 'Tomorrow · ' : '') + d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + '</h5>' + a.map((x) => this._dayRow(x)).join(''); }
       return ctl() + '<div class="ag panel">' + (out || '<div class="empty">Nothing scheduled in the next 30 days.</div>') + '</div>';
     }
+    _cogPanel() {
+      const p = this._prefs || { kinds: { show: true, anime: true, movie: true }, hidden: [] }, hid = new Set(p.hidden || []);
+      const st = this._st || {}, seen = new Set(), items = [];
+      [...(st.watching || []), ...(st.plan || [])].forEach((x) => { const k = x.kind + '|' + x.id; if (!seen.has(k)) { seen.add(k); items.push(x); } });
+      items.sort((a, b) => String(a.title).localeCompare(String(b.title)));
+      const kinds = [['show', 'TV series'], ['anime', 'Anime'], ['movie', 'Movies']].map(([k, l]) => '<label><input type="checkbox" data-pk="' + k + '"' + (p.kinds[k] !== false ? ' checked' : '') + '> ' + l + '</label>').join('');
+      const rows = items.map((x) => { const k = x.kind + '|' + x.id; return '<label data-t="' + esc(String(x.title).toLowerCase()) + '"><input type="checkbox" data-hk="' + esc(k) + '"' + (hid.has(k) ? '' : ' checked') + '><span title="' + esc(x.title) + '">' + esc(x.title) + (x.kind !== 'show' ? ' <small style="color:var(--dim)">(' + x.kind + ')</small>' : '') + '</span></label>'; }).join('');
+      const shown = items.filter((x) => !hid.has(x.kind + '|' + x.id)).length;
+      return '<div class="cs"><h4>Show on the calendar</h4><div class="row2">' + kinds + '</div>' +
+        '<h4>Titles I follow <span class="m">(' + shown + ' of ' + items.length + ' shown; untick to remove one from the calendar)</span></h4>' +
+        '<div class="row2"><input type="search" data-cq placeholder="Filter titles…"><button class="sm" data-cb="all">Tick all</button><button class="sm" data-cb="none">Untick all</button><button class="sm" data-cb="recent">Only watched in the last 90 days</button><button class="sm" data-cb="reset">Reset hidden</button><button class="sm pri" data-cog="1">Done</button></div>' +
+        '<div class="lst">' + (rows || '<div class="m">Nothing in Watching or Plan to watch yet.</div>') + '</div></div>';
+    }
+    async _savePrefs() {
+      try { this._prefs = await this._hass.callWS({ type: 'simkl_hub/prefs_set', kinds: this._prefs.kinds, hidden: this._prefs.hidden }); } catch (e) { this._flash((e && (e.message || e.code)) || 'Could not save'); }
+      this._cal = {}; this._loading = {}; this._render();
+    }
     _weekStart() { const b = this._wk || new Date(); const d = new Date(b.getFullYear(), b.getMonth(), b.getDate()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
     _nav(n) {
       if (this._view === 'month') { if (n === 0) { this._cursor = new Date(); this._cursor.setDate(1); this._day = dkey(new Date()); } else this._cursor = new Date(this._cursor.getFullYear(), this._cursor.getMonth() + n, 1); }
@@ -374,7 +439,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       else if (this._sel) body = '<div class="tabs"><button data-back="1">← Back</button></div>' + this._detailView();
       else {
         const w = st.watching || [], p = st.plan || [], c = st.completed || {};
-        const card = (x, extra, badge) => '<div class="it ' + (this._status(x.kind, x.id) === 'done' ? 'seen' : '') + '" data-k="' + esc(x.kind + '|' + x.id) + '">' + (badge || '') + (this._tab === 'watching' || this._tab === 'upnext' || this._tab === 'plan' ? '' : this._badge(x.kind, x.id)) + '<img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="b"><div class="t">' + esc(x.title) + '</div><div class="m">' + esc(x.year || '') + ' · ' + esc(x.kind) + '</div>' + (extra || '') + '</div></div>';
+        const card = (x, extra, badge) => '<div class="it ' + (this._status(x.kind, x.id) === 'done' ? 'seen' : '') + '" data-k="' + esc(x.kind + '|' + x.id) + '">' + (badge || '') + (this._tab === 'watching' || this._tab === 'upnext' || this._tab === 'plan' ? '' : this._badge(x.kind, x.id)) + (this._status(x.kind, x.id) === 'done' ? '' : '<button class="qm" data-qm="' + esc(x.kind + '|' + x.id) + '" title="Mark as watched">✓</button>') + '<img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="b"><div class="t">' + esc(x.title) + '</div><div class="m">' + esc(x.year || '') + ' · ' + esc(x.kind) + '</div>' + (extra || '') + '</div></div>';
         const prog = (x) => { if (!x.total) return ''; const pc = Math.min(100, Math.round((x.watched || 0) / x.total * 100)); return '<div class="bar"><i style="width:' + pc + '%"></i></div><div class="m">' + (x.watched || 0) + '/' + x.total + ' eps</div>'; };
         const nxt = (x) => (x.next && x.next.episode != null ? '<div class="nx">Next: S' + (x.next.season || 1) + 'E' + x.next.episode + (x.next.date ? ' · ' + fmtDate(x.next.date) : '') + '</div>' : '');
         let inner;
@@ -393,13 +458,31 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       this._wire(root);
     }
     _wire(root) {
-      const on = (sel, fn) => root.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => fn(b)));
+      const on = (sel, fn) => root.querySelectorAll(sel).forEach((b) => b.addEventListener('click', (ev) => fn(b, ev)));
       const all = () => [...((this._st && this._st.watching) || []), ...((this._st && this._st.plan) || [])];
       on('[data-t]', (b) => { this._tab = b.dataset.t; this._focusSearch = this._tab === 'search'; this._render(); });
       on('[data-k]', (b) => { const it = all().find((x) => x.kind + '|' + x.id === b.dataset.k) || this._pool[b.dataset.k]; if (it) this._open(it); });
       on('[data-back]', () => { this._sel = null; this._det = null; this._render(); });
       on('[data-s]', (b) => { this._season = Number(b.dataset.s); this._ep = null; this._render(); });
       on('[data-e]', (b) => { this._ep = Number(b.dataset.e); this._render(); });
+      root.querySelectorAll('[data-qm]').forEach((b) => b.addEventListener('click', async (e) => {
+        e.stopPropagation(); const [kind, id] = b.dataset.qm.split('|'); b.textContent = '…';
+        try { await this._hass.callWS({ type: 'simkl_hub/mark', kind, simkl_id: id }); this._st = { ...this._st, done: [...((this._st && this._st.done) || []), kind + '|' + id] }; this._done = null; this._render(); this._loadState(); }
+        catch (err) { b.textContent = '✓'; this._flash((err && (err.message || err.code)) || 'Could not mark as watched'); }
+      }));
+      on('[data-kf]', (b) => { if (!this._prefs) return; const k = b.dataset.kf; this._prefs.kinds[k] = this._prefs.kinds[k] === false; this._savePrefs(); });
+      on('[data-hide]', (b, ev) => { ev.stopPropagation(); if (!this._prefs) return; const h = new Set(this._prefs.hidden); h.add(b.dataset.hide); this._prefs.hidden = [...h]; this._flash('Hidden — undo any time in ⚙ → Reset hidden'); this._savePrefs(); });
+      on('[data-cb="reset"]', () => { this._prefs.hidden = []; this._savePrefs(); });
+      on('[data-cog]', () => { this._cog = !this._cog; this._render(); });
+      root.querySelectorAll('[data-pk]').forEach((b) => b.addEventListener('change', () => { this._prefs.kinds[b.dataset.pk] = b.checked; this._savePrefs(); }));
+      root.querySelectorAll('[data-hk]').forEach((b) => b.addEventListener('change', () => { const h = new Set(this._prefs.hidden); if (b.checked) h.delete(b.dataset.hk); else h.add(b.dataset.hk); this._prefs.hidden = [...h]; clearTimeout(this._pt); this._pt = setTimeout(() => this._savePrefs(), 600); const hd = root.querySelector('.cs h4 .m'); if (hd) hd.textContent = '(' + root.querySelectorAll('[data-hk]:checked').length + ' of ' + root.querySelectorAll('[data-hk]').length + ' shown; untick to remove one from the calendar)'; }));
+      root.querySelectorAll('[data-cq]').forEach((i) => i.addEventListener('input', () => { const q = i.value.trim().toLowerCase(); root.querySelectorAll('.cs .lst label').forEach((l) => { l.style.display = !q || (l.dataset.t || '').includes(q) ? '' : 'none'; }); }));
+      on('[data-cb]', (b) => {
+        if (b.dataset.cb === 'reset') return;
+        const q = (root.querySelector('[data-cq]') || { value: '' }).value.trim().toLowerCase(), items = [...((this._st && this._st.watching) || []), ...((this._st && this._st.plan) || [])], h = new Set(this._prefs.hidden), cutoff = Date.now() - 90 * 864e5;
+        items.forEach((x) => { if (q && !String(x.title).toLowerCase().includes(q)) return; const k = x.kind + '|' + x.id; const recent = x.status === 'plantowatch' || (x.last && new Date(x.last).getTime() >= cutoff); if (b.dataset.cb === 'all' || (b.dataset.cb === 'recent' && recent)) h.delete(k); else h.add(k); });
+        this._prefs.hidden = [...h]; this._savePrefs();
+      });
       on('[data-trl]', () => { this._trailer = !this._trailer; this._render(); });
       on('[data-mk]', (b) => this._mark(b.dataset.mk));
       on('[data-ls]', (b) => this._setList(b.dataset.ls));
@@ -412,7 +495,8 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       on('[data-sc]', (b) => { this._scope = b.dataset.sc; this._render(); });
       on('[data-nav]', (b) => { this._nav(Number(b.dataset.nav)); this._render(); });
       on('[data-d]', (b) => { this._day = b.dataset.d; this._render(); });
-      on('[data-ci]', (b) => {
+      on('[data-ci]', (b, ev) => {
+        if (ev && ev.target.closest && ev.target.closest('[data-hide]')) return;
         const [k, id, s, e] = b.dataset.ci.split('|'); const hit = Object.values(this._cal).flat().find((x) => x.k === k && String(x.id) === id);
         this._open({ kind: k, id: id, title: hit && hit.title, poster: hit && hit.poster }, s === '' ? null : Number(s), e === '' ? null : Number(e));
       });
