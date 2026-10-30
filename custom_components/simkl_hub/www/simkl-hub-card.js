@@ -91,6 +91,8 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
 .bd{z-index:2;position:absolute;top:8px;right:8px;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;backdrop-filter:blur(4px)}
 .bd.done{background:rgba(16,185,129,.92);color:#04251a}.bd.now{background:rgba(96,165,250,.92);color:#06172e}.bd.plan{background:rgba(245,158,11,.92);color:#2b1a00}
 .it.seen img{opacity:.55}.ep.seen b{color:var(--ok)}.ep.seen span{color:var(--mute)}
+.qm{position:absolute;z-index:3;right:8px;top:44px;width:30px;height:30px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:15px;background:rgba(0,0,0,.7);opacity:0;transition:opacity .12s}
+.it:hover .qm,.it:focus-within .qm{opacity:1}@media(hover:none){.qm{opacity:.9}}.qm:hover{background:var(--ok);border-color:var(--ok);color:#04251a}
 .rk{z-index:2;position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:700}
 .it{position:relative}
 .sub2{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
@@ -274,6 +276,11 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
     _setList(to) { const s = this._sel; return this._call({ type: 'simkl_hub/set_list', kind: s.kind, simkl_id: String(s.id), to }, 'Moved to ' + to.replace('plantowatch', 'Plan to watch').replace('hold', 'On hold')); }
 
     /* ---------- search / trending ---------- */
+    _flash(msg) {
+      const el = document.createElement('div'); el.textContent = msg;
+      el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99;background:#fbbf24;color:#1b1500;padding:10px 16px;border-radius:12px;font:600 13px system-ui;max-width:90vw';
+      this.shadowRoot.appendChild(el); setTimeout(() => el.remove(), 6000);
+    }
     _status(kind, id) {
       const st = this._st || {}, k = kind + '|' + id;
       if ((st.done || []).includes(k)) return 'done';
@@ -374,7 +381,7 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       else if (this._sel) body = '<div class="tabs"><button data-back="1">← Back</button></div>' + this._detailView();
       else {
         const w = st.watching || [], p = st.plan || [], c = st.completed || {};
-        const card = (x, extra, badge) => '<div class="it ' + (this._status(x.kind, x.id) === 'done' ? 'seen' : '') + '" data-k="' + esc(x.kind + '|' + x.id) + '">' + (badge || '') + (this._tab === 'watching' || this._tab === 'upnext' || this._tab === 'plan' ? '' : this._badge(x.kind, x.id)) + '<img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="b"><div class="t">' + esc(x.title) + '</div><div class="m">' + esc(x.year || '') + ' · ' + esc(x.kind) + '</div>' + (extra || '') + '</div></div>';
+        const card = (x, extra, badge) => '<div class="it ' + (this._status(x.kind, x.id) === 'done' ? 'seen' : '') + '" data-k="' + esc(x.kind + '|' + x.id) + '">' + (badge || '') + (this._tab === 'watching' || this._tab === 'upnext' || this._tab === 'plan' ? '' : this._badge(x.kind, x.id)) + (this._status(x.kind, x.id) === 'done' ? '' : '<button class="qm" data-qm="' + esc(x.kind + '|' + x.id) + '" title="Mark as watched">✓</button>') + '<img loading="lazy" src="' + poster(x.poster) + '" alt=""><div class="b"><div class="t">' + esc(x.title) + '</div><div class="m">' + esc(x.year || '') + ' · ' + esc(x.kind) + '</div>' + (extra || '') + '</div></div>';
         const prog = (x) => { if (!x.total) return ''; const pc = Math.min(100, Math.round((x.watched || 0) / x.total * 100)); return '<div class="bar"><i style="width:' + pc + '%"></i></div><div class="m">' + (x.watched || 0) + '/' + x.total + ' eps</div>'; };
         const nxt = (x) => (x.next && x.next.episode != null ? '<div class="nx">Next: S' + (x.next.season || 1) + 'E' + x.next.episode + (x.next.date ? ' · ' + fmtDate(x.next.date) : '') + '</div>' : '');
         let inner;
@@ -400,6 +407,11 @@ button.cf{background:var(--warn);border-color:var(--warn);color:#1b1500;font-wei
       on('[data-back]', () => { this._sel = null; this._det = null; this._render(); });
       on('[data-s]', (b) => { this._season = Number(b.dataset.s); this._ep = null; this._render(); });
       on('[data-e]', (b) => { this._ep = Number(b.dataset.e); this._render(); });
+      root.querySelectorAll('[data-qm]').forEach((b) => b.addEventListener('click', async (e) => {
+        e.stopPropagation(); const [kind, id] = b.dataset.qm.split('|'); b.textContent = '…';
+        try { await this._hass.callWS({ type: 'simkl_hub/mark', kind, simkl_id: id }); this._st = { ...this._st, done: [...((this._st && this._st.done) || []), kind + '|' + id] }; this._done = null; this._render(); this._loadState(); }
+        catch (err) { b.textContent = '✓'; this._flash((err && (err.message || err.code)) || 'Could not mark as watched'); }
+      }));
       on('[data-trl]', () => { this._trailer = !this._trailer; this._render(); });
       on('[data-mk]', (b) => this._mark(b.dataset.mk));
       on('[data-ls]', (b) => this._setList(b.dataset.ls));
