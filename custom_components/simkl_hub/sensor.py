@@ -11,6 +11,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .coordinator import SimklCoordinator
 
+def _device_name(entry: ConfigEntry) -> str:
+    return entry.title if "simkl" in entry.title.lower() else f"SIMKL {entry.title}"
+
+
 SENSORS = [
     ("watching", "Watching", "mdi:play-circle"),
     ("plan", "Plan to watch", "mdi:bookmark-multiple"),
@@ -34,7 +38,7 @@ class SimklCount(CoordinatorEntity[SimklCoordinator], SensorEntity):
         self._attr_icon = icon
         self._attr_unique_id = f"{entry.entry_id}_{key}"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)}, name=f"SIMKL {entry.title}", manufacturer="SIMKL"
+            identifiers={(DOMAIN, entry.entry_id)}, name=_device_name(entry), manufacturer="SIMKL"
         )
 
     @property

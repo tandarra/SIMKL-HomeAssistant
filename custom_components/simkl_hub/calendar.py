@@ -14,6 +14,7 @@ from .const import DOMAIN
 
 SCAN_INTERVAL = timedelta(minutes=15)
 from .coordinator import SimklCoordinator
+from .sensor import _device_name
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, add: AddEntitiesCallback) -> None:
@@ -28,7 +29,7 @@ class SimklCalendar(CalendarEntity):
     def __init__(self, coord: SimklCoordinator, entry: ConfigEntry) -> None:
         self._coord = coord
         self._attr_unique_id = f"{entry.entry_id}_calendar"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)}, name=_device_name(entry), manufacturer="SIMKL")
         self._next: CalendarEvent | None = None
 
     @property
