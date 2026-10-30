@@ -66,7 +66,7 @@ a{color:var(--accent)}.err{color:var(--warn);font-size:12px;margin-top:10px}
 .ov{font-size:13px;line-height:1.55;color:#c9d0e4;max-width:760px}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}.chips button{border-radius:999px;padding:5px 12px;font-size:12px;color:var(--mute)}
 .chips button.on{color:#fff;background:rgba(255,77,109,.25);border-color:var(--accent)}
-.eps{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto;margin-bottom:14px}
+.eps{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px;max-height:300px;overflow:auto;margin-bottom:14px}
 .ep{display:flex;gap:10px;align-items:baseline;text-align:left;border-radius:10px;padding:8px 12px;width:100%}
 .ep.on{border-color:var(--accent);background:rgba(255,77,109,.14)}.ep.nx2{border-color:var(--ok)}
 .ep b{min-width:34px;color:var(--mute)}.ep span{flex:1}.ep i{font-style:normal;font-size:11px;color:var(--dim)}

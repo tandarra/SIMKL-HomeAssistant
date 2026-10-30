@@ -1,10 +1,12 @@
+<p align="center"><img src="docs/hero.png" alt="SIMKL Hub for Home Assistant"></p>
+
 # SIMKL Hub for Home Assistant
 
 Your [SIMKL](https://simkl.com) lists inside Home Assistant, with a **release calendar**, show/episode pages and
 **open in Stremio** on Android TV / Google TV / Nvidia Shield or your phone.
 
-![Calendar](docs/calendar-month.png)
-*Sample data. Month, week and agenda views; click a day to see everything releasing.*
+![Features](docs/features.png)
+*Sample data and artwork. Month, week and agenda views; click a day to see everything releasing.*
 
 ## Features
 
